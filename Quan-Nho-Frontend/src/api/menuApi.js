@@ -1,70 +1,28 @@
-import { mockDb } from './mockDb'
+import apiClient from './apiClient'
 
-const delay = (ms = 200) => new Promise((resolve) => setTimeout(resolve, ms))
+const body = (response) => response.data
 
 export const menuApi = {
-  async getMenu() {
-    await delay(200)
-    return mockDb.getMenu()
-  },
-
+  async getMenu() { return body(await apiClient.get('/menu')) },
+  async getCategories() { return body(await apiClient.get('/categories')) },
+  async getToppings() { return body(await apiClient.get('/toppings')) },
   async saveItem(item) {
-    await delay(300)
-    if (!item.name || !item.name.trim()) {
-      throw new Error('Tên món không được để trống')
-    }
-    if (!item.price || Number(item.price) <= 0) {
-      throw new Error('Giá món phải lớn hơn 0 ₫')
-    }
-    return mockDb.saveMenuItem(item)
+    return body(item.id
+      ? await apiClient.put(`/menu/${item.id}`, item)
+      : await apiClient.post('/menu', item))
   },
-
-  async toggleAvailability(id) {
-    await delay(150)
-    return mockDb.toggleItemAvailability(id)
-  },
-
-  async deleteItem(id) {
-    await delay(200)
-    return mockDb.deleteMenuItem(id)
-  },
-
-  async getCategories() {
-    await delay(150)
-    return mockDb.getCategories()
-  },
-
+  async toggleAvailability(id) { return body(await apiClient.patch(`/menu/${id}/availability`)) },
+  async deleteItem(id) { await apiClient.delete(`/menu/${id}`); return true },
   async saveCategory(category) {
-    await delay(200)
-    if (!category.name || !category.name.trim()) {
-      throw new Error('Tên danh mục không được để trống')
-    }
-    return mockDb.saveCategory(category)
+    return body(category.id
+      ? await apiClient.put(`/categories/${category.id}`, category)
+      : await apiClient.post('/categories', category))
   },
-
-  async deleteCategory(id) {
-    await delay(200)
-    return mockDb.deleteCategory(id)
-  },
-
-  async getToppings() {
-    await delay(150)
-    return mockDb.getToppings()
-  },
-
+  async deleteCategory(id) { await apiClient.delete(`/categories/${id}`); return true },
   async saveTopping(topping) {
-    await delay(200)
-    if (!topping.name || !topping.name.trim()) {
-      throw new Error('Tên topping không được để trống')
-    }
-    if (topping.price === undefined || Number(topping.price) < 0) {
-      throw new Error('Giá topping không hợp lệ')
-    }
-    return mockDb.saveTopping(topping)
+    return body(topping.id
+      ? await apiClient.put(`/toppings/${topping.id}`, topping)
+      : await apiClient.post('/toppings', topping))
   },
-
-  async deleteTopping(id) {
-    await delay(200)
-    return mockDb.deleteTopping(id)
-  },
+  async deleteTopping(id) { await apiClient.delete(`/toppings/${id}`); return true },
 }

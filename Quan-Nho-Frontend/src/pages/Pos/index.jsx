@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, Ban, Utensils, Coffee, MonitorUp } from 'lucide-react'
+import { Search, Plus, Ban, Utensils, Coffee } from 'lucide-react'
 import { menuApi } from '../../api/menuApi'
 import { formatCurrency } from '../../utils/formatters'
 import { DISPLAY_STATES, sendDisplayState } from '../../utils/customerDisplaySync'
@@ -180,17 +180,8 @@ export default function PosPage() {
               )}
             </div>
 
+            {/* Đã gỡ bỏ nút Màn hình khách: window.open('/display', 'CustomerDisplayWindow') */}
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => window.open('/display', 'CustomerDisplayWindow', 'width=1280,height=800')}
-                title="Mở cửa sổ Màn hình khách (hướng về phía khách hàng)"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#D4C7B8] bg-white hover:bg-[#FAF7F2] text-xs font-bold text-[#2D1B14] hover:border-[#C88A35] transition cursor-pointer shadow-2xs"
-              >
-                <MonitorUp className="w-4 h-4 text-[#C88A35]" />
-                <span>Màn hình khách</span>
-              </button>
-
               <div className="text-xs text-stone-500 hidden sm:block font-medium whitespace-nowrap">
                 Hiển thị: <strong>{filteredItems.length}</strong> món
               </div>
@@ -247,19 +238,29 @@ export default function PosPage() {
                     }`}
                   >
                     {/* Item Image with Out-of-Stock Overlay */}
-                    <div className="relative aspect-4/3 overflow-hidden bg-stone-100">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className={`w-full h-full object-cover transition duration-300 ${
-                          item.isAvailable ? 'group-hover:scale-105' : 'grayscale'
-                        }`}
-                        onError={(e) => {
-                          e.target.src =
-                            'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=500&auto=format&fit=crop&q=60'
-                        }}
-                        loading="lazy"
-                      />
+                    <div className="relative aspect-4/3 overflow-hidden bg-[#F5EFEB] flex items-center justify-center">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className={`w-full h-full object-cover transition duration-300 ${
+                            item.isAvailable ? 'group-hover:scale-105' : 'grayscale'
+                          }`}
+                          onError={(e) => {
+                            e.target.style.display = 'none'
+                          }}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 select-none p-2 text-center">
+                          {isFood ? (
+                            <Utensils className="w-8 h-8 text-stone-300 mb-1" />
+                          ) : (
+                            <Coffee className="w-8 h-8 text-stone-300 mb-1" />
+                          )}
+                          <span className="text-[11px] font-medium text-stone-400">Chưa có ảnh</span>
+                        </div>
+                      )}
 
                       {!item.isAvailable && (
                         <div className="absolute inset-0 bg-stone-900/60 flex items-center justify-center p-2">

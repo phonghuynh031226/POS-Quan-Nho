@@ -237,135 +237,152 @@ export default function MenuManagementPage() {
           description="Hãy tạo món mới hoặc thay đổi bộ lọc tìm kiếm"
         />
       ) : (
-        <div className="bg-white rounded-2xl border border-[#E8DFD5] overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-[#F8F5F0] border-b border-[#E8DFD5] text-[#3E2723] font-bold uppercase tracking-wider text-[11px]">
-                <tr>
-                  <th className="p-4">Hình ảnh</th>
-                  <th className="p-4">Tên món & Tùy chọn</th>
-                  <th className="p-4">Danh mục</th>
-                  <th className="p-4">Đơn giá cơ bản</th>
-                  <th className="p-4 text-center">Trạng thái bán</th>
-                  <th className="p-4 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8DFD5]">
-                {filteredItems.map((item) => {
-                  const currentCategory = categories.find((c) => c.id === item.category)
-                  const isFood = item.category === 'SNACKS' || currentCategory?.type === 'FOOD'
-                  const itemRelations = productRelations.filter((r) => r.productId === item.id)
-                  const itemGroupNames = itemRelations
-                    .map((r) => optionGroups.find((g) => g.id === r.optionGroupId)?.name)
-                    .filter(Boolean)
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredItems.map((item) => {
+            const currentCategory = categories.find((c) => c.id === item.category)
+            const isFood = item.category === 'SNACKS' || currentCategory?.type === 'FOOD'
+            const itemRelations = productRelations.filter((r) => r.productId === item.id)
+            const itemGroupNames = itemRelations
+              .map((r) => optionGroups.find((g) => g.id === r.optionGroupId)?.name)
+              .filter(Boolean)
 
-                  return (
-                    <tr key={item.id} className="hover:bg-[#FAF7F2] transition">
-                      <td className="p-4 w-16">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-12 h-12 rounded-xl object-cover border border-[#E8DFD5]"
-                          onError={(e) => {
-                            e.target.src =
-                              'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=500&auto=format&fit=crop&q=60'
-                          }}
-                        />
-                      </td>
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleOpenEditModal(item)}
+                className={`bg-white rounded-2xl border transition shadow-xs flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-md group ${
+                  item.isAvailable
+                    ? 'border-[#E8DFD5] hover:border-[#C88A35]'
+                    : 'border-stone-200 opacity-75 bg-stone-50'
+                }`}
+              >
+                {/* Image & Badges */}
+                <div className="relative h-44 w-full bg-[#F5EFEB] overflow-hidden flex items-center justify-center">
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-stone-400 select-none p-4 text-center">
+                      {isFood ? (
+                        <Utensils className="w-10 h-10 text-stone-300 mb-1" />
+                      ) : (
+                        <Coffee className="w-10 h-10 text-stone-300 mb-1" />
+                      )}
+                      <span className="text-[11px] font-medium text-stone-400">Chưa có ảnh</span>
+                    </div>
+                  )}
 
-                      <td className="p-4 font-semibold text-[#2D1B14]">
-                        <div className="flex items-center gap-2">
-                          <span>{item.name}</span>
-                          {itemGroupNames.length > 0 && (
-                            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                              {itemGroupNames.length} nhóm tùy chọn
+                  {/* Category badge */}
+                  <div className="absolute top-2.5 left-2.5">
+                    <span className="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-[#3E2723] text-[11px] font-bold shadow-xs inline-flex items-center gap-1 border border-stone-200">
+                      {isFood ? (
+                        <Utensils className="w-3 h-3 text-amber-600" />
+                      ) : (
+                        <Coffee className="w-3 h-3 text-[#C88A35]" />
+                      )}
+                      <span>{currentCategory?.name || item.category}</span>
+                    </span>
+                  </div>
+
+                  {/* Availability toggle badge */}
+                  <div className="absolute top-2.5 right-2.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleToggleAvailability(item.id)
+                      }}
+                      title={item.isAvailable ? 'Đang bán (bấm để đổi hết món)' : 'Hết món (bấm để mở bán)'}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition shadow-xs cursor-pointer inline-flex items-center gap-1 border ${
+                        item.isAvailable
+                          ? 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600'
+                          : 'bg-rose-500 text-white border-rose-600 hover:bg-rose-600'
+                      }`}
+                    >
+                      {item.isAvailable ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          <span>Đang bán</span>
+                        </>
+                      ) : (
+                        <>
+                          <Ban className="w-3 h-3" />
+                          <span>Hết món</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-2.5">
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-[#2D1B14] line-clamp-1 group-hover:text-[#C88A35] transition">
+                      {item.name}
+                    </h3>
+
+                    <div className="mt-1 text-base font-black text-[#C88A35]">
+                      {formatCurrency(item.price)}
+                    </div>
+
+                    {/* Option groups badges */}
+                    {itemGroupNames.length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-[#F5EFEB]">
+                        <div className="text-[10px] uppercase font-bold text-stone-400 mb-1">
+                          Tùy chọn ({itemGroupNames.length}):
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {itemGroupNames.map((grpName, i) => (
+                            <span
+                              key={i}
+                              className="bg-[#FAF7F2] text-[#3E2723] border border-[#E8DFD5] px-1.5 py-0.5 rounded text-[10px] font-medium"
+                            >
+                              {grpName}
                             </span>
-                          )}
+                          ))}
                         </div>
-                        {/* Option groups badges */}
-                        {itemGroupNames.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px]">
-                            {itemGroupNames.map((grpName, i) => (
-                              <span
-                                key={i}
-                                className="bg-[#EFE9E0] text-[#3E2723] px-1.5 py-0.5 rounded font-medium"
-                              >
-                                {grpName}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                      <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-full bg-[#EFE9E0] text-[#3E2723] text-xs font-bold inline-flex items-center gap-1">
-                          {isFood ? (
-                            <Utensils className="w-3 h-3 text-amber-600" />
-                          ) : (
-                            <Coffee className="w-3 h-3 text-[#C88A35]" />
-                          )}
-                          <span>
-                            {currentCategory?.name || item.category}
-                          </span>
-                        </span>
-                      </td>
-
-                      <td className="p-4 font-black text-[#3E2723] text-sm">
-                        {formatCurrency(item.price)}
-                      </td>
-
-                      <td className="p-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleAvailability(item.id)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer ${
-                            item.isAvailable
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                              : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
-                          }`}
-                        >
-                          {item.isAvailable ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Đang bán</span>
-                            </>
-                          ) : (
-                            <>
-                              <Ban className="w-3.5 h-3.5" />
-                              <span>Hết món</span>
-                            </>
-                          )}
-                        </button>
-                      </td>
-
-                      <td className="p-4 text-right">
-                        <div className="inline-flex items-center gap-1.5 justify-end">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={Edit2}
-                            onClick={() => handleOpenEditModal(item)}
-                          >
-                            Sửa
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            icon={Trash2}
-                            onClick={() => setItemToDelete(item)}
-                            className="text-rose-600 hover:bg-rose-50 border-rose-200"
-                            title="Xóa món"
-                          >
-                            Xóa
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                {/* Card Footer Actions */}
+                <div className="px-4 py-2.5 bg-[#FAF7F2] border-t border-[#E8DFD5] flex items-center justify-end gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={Edit2}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleOpenEditModal(item)
+                    }}
+                    className="text-xs py-1 px-3"
+                  >
+                    Sửa
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={Trash2}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setItemToDelete(item)
+                    }}
+                    className="text-rose-600 hover:bg-rose-50 border-rose-200 text-xs py-1 px-3"
+                    title="Xóa món"
+                  >
+                    Xóa
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
 

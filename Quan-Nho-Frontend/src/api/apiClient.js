@@ -15,6 +15,20 @@ const apiClient = axios.create({
   },
 })
 
+// Spring Security requires a CSRF token for every write, including login.
+const csrfClient = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || '/api', withCredentials: true })
+let csrfToken = null
+apiClient.interceptors.request.use(async (config) => {
+  if (!['get', 'head', 'options'].includes((config.method || 'get').toLowerCase())) {
+    if (!csrfToken) {
+      const { data } = await csrfClient.get('/auth/csrf')
+      csrfToken = data.token
+    }
+    config.headers['X-XSRF-TOKEN'] = csrfToken
+  }
+  return config
+})
+
 // Response interceptor for handling 401 Unauthorized from Spring Security
 apiClient.interceptors.response.use(
   (response) => response,
@@ -23,6 +37,7 @@ apiClient.interceptors.response.use(
       // Session expired or unauthenticated
       console.warn('Phiên đăng nhập đã hết hạn hoặc chưa xác thực')
     }
+    if (error.response?.status === 403) csrfToken = null
     return Promise.reject(error)
   }
 )

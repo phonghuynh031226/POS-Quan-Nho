@@ -1,89 +1,40 @@
-import { mockDb } from './mockDb'
-
-const delay = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms))
+import apiClient from './apiClient'
 
 export const orderApi = {
   async createOrder(orderPayload) {
-    await delay(350)
-    if (!orderPayload.items || orderPayload.items.length === 0) {
-      throw new Error('Giỏ hàng trống, không thể tạo đơn')
-    }
-
-    if (orderPayload.paymentMethod === 'TIEN_MAT') {
-      if ((orderPayload.cashGiven || 0) < orderPayload.totalAmount) {
-        throw new Error('Tiền khách đưa chưa đủ để thanh toán đơn hàng')
-      }
-    }
-
-    return mockDb.createOrder(orderPayload)
+    const { data } = await apiClient.post('/orders', orderPayload)
+    return data
   },
 
   async getOrders(filters = {}) {
-    await delay(150)
-    let orders = mockDb.getOrders()
-
-    if (filters.fulfillmentStatus && filters.fulfillmentStatus !== 'ALL') {
-      orders = orders.filter((o) => o.fulfillmentStatus === filters.fulfillmentStatus)
-    }
-
-    if (filters.paymentStatus && filters.paymentStatus !== 'ALL') {
-      orders = orders.filter((o) => o.paymentStatus === filters.paymentStatus)
-    }
-
-    if (filters.search) {
-      const q = filters.search.trim().toLowerCase()
-      orders = orders.filter(
-        (o) =>
-          o.orderNumber.toLowerCase().includes(q) ||
-          o.createdBy.toLowerCase().includes(q) ||
-          o.items.some((i) => i.name.toLowerCase().includes(q))
-      )
-    }
-
-    if (filters.date) {
-      orders = orders.filter((o) => o.createdAt.startsWith(filters.date))
-    }
-
-    return orders
+    const { data } = await apiClient.get('/orders')
+    return data.filter((order) => {
+      if (filters.paymentStatus && filters.paymentStatus !== 'ALL' &&
+          order.paymentStatus !== filters.paymentStatus && order.payment_status !== filters.paymentStatus) return false
+      if (filters.fulfillmentStatus && filters.fulfillmentStatus !== 'ALL' &&
+          order.fulfillmentStatus !== filters.fulfillmentStatus) return false
+      if (filters.date && String(order.createdAt).slice(0, 10) !== filters.date) return false
+      if (filters.search) {
+        const query = filters.search.trim().toLowerCase()
+        return order.orderNumber.toLowerCase().includes(query) ||
+          order.createdBy.toLowerCase().includes(query) ||
+          order.items.some((item) => item.name.toLowerCase().includes(query))
+      }
+      return true
+    })
   },
 
   async getOrderById(id) {
-    await delay(100)
-    return mockDb.getOrderById(id)
+    const { data } = await apiClient.get(`/orders/${id}`)
+    return data
   },
 
-  async getOrderByToken(token) {
-    await delay(200)
-    const order = mockDb.getOrderByToken(token)
-    if (!order) {
-      throw new Error('Không tìm thấy thông tin đơn hàng hoặc mã tra cứu không hợp lệ')
-    }
-    return order
+  async cancelOrder(id, reason, refundAmount) {
+    const { data } = await apiClient.post(`/orders/${id}/cancel`, { reason, refundAmount })
+    return data
   },
 
-  async updateFulfillmentStatus(orderId, newStatus) {
-    await delay(200)
-    return mockDb.updateFulfillmentStatus(orderId, newStatus)
-  },
-
-  async toggleKitchenItemDone(orderId, lineId) {
-    await delay(100)
-    return mockDb.toggleKitchenItemDone(orderId, lineId)
-  },
-
-  async cancelOrder(orderId, reason, refundAmount) {
-    await delay(300)
-    if (!reason || !reason.trim()) {
-      throw new Error('Vui lòng nhập lý do hủy đơn hàng')
-    }
-    return mockDb.cancelOrder(orderId, reason.trim(), refundAmount)
-  },
-
-  async markReprint(orderId) {
-    return mockDb.markReprint(orderId)
-  },
-
-  subscribe(callback) {
-    return mockDb.subscribe(callback)
+  async markReprint(id) {
+    return this.getOrderById(id)
   },
 }

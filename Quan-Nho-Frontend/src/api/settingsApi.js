@@ -1,50 +1,54 @@
-import { mockDb } from './mockDb.js'
+import apiClient from './apiClient'
+import { DEFAULT_STORE_SETTINGS } from '../constants'
 
-const delay = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms))
+const toSettings = (shop) => ({
+  ...DEFAULT_STORE_SETTINGS,
+  ...shop,
+  storeName: shop.shop_name,
+  storeSubtitle: shop.store_subtitle || '',
+  address: shop.shop_address || '',
+  wifiName: shop.wifi_name || '',
+  wifiPass: shop.wifi_password_encrypted || '',
+  receiptFooterMessage: shop.receipt_message || '',
+})
+
+const toShop = (settings) => ({
+  shop_name: settings.storeName || settings.shop_name,
+  store_subtitle: settings.storeSubtitle ?? settings.store_subtitle ?? '',
+  phone: settings.phone || '',
+  shop_address: settings.address ?? settings.shop_address ?? '',
+  wifi_name: settings.wifiName ?? settings.wifi_name ?? '',
+  wifi_password_encrypted: settings.wifiPass ?? settings.wifi_password_encrypted ?? '',
+  receipt_message: settings.receiptFooterMessage ?? settings.receipt_message ?? '',
+  show_wifi_on_receipt: settings.show_wifi_on_receipt !== false,
+})
 
 export const settingsApi = {
-  // --- STORE SETTINGS TỔNG HỢP ---
   async getSettings() {
-    await delay(80)
-    return mockDb.getStoreSettings()
+    const { data } = await apiClient.get('/settings/shop')
+    return toSettings(data)
   },
-
   async updateSettings(settings) {
-    await delay(180)
-    if (!settings) throw new Error('Dữ liệu cài đặt không hợp lệ')
-    return mockDb.saveStoreSettings(settings)
+    const { data } = await apiClient.put('/settings/shop', toShop(settings))
+    return toSettings(data)
   },
-
   async resetSettings() {
-    await delay(150)
-    return mockDb.resetStoreSettings()
+    return this.updateSettings(DEFAULT_STORE_SETTINGS)
   },
-
-  // --- SHOP SETTINGS (Table 10 - In Bill) ---
   async getShopSettings() {
-    await delay(80)
-    return mockDb.getShopSettings()
+    const { data } = await apiClient.get('/settings/shop')
+    return data
   },
-
   async updateShopSettings(shopData) {
-    await delay(180)
-    if (!shopData || !shopData.shop_name?.trim()) {
-      throw new Error('Tên quán không được để trống')
-    }
-    return mockDb.saveShopSettings(shopData)
+    const { data } = await apiClient.put('/settings/shop', shopData)
+    return data
   },
-
-  // --- SEPAY SETTINGS (Table 11 - Cấu hình API Key) ---
   async getSepaySettings() {
-    await delay(80)
-    return mockDb.getSepaySettings()
+    const { data } = await apiClient.get('/settings/sepay')
+    return data
   },
-
   async saveSepayApiKey(apiKey) {
-    await delay(200)
-    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 4) {
-      throw new Error('Vui lòng nhập SePay API Key hợp lệ')
-    }
-    return mockDb.saveSepayApiKey(apiKey)
+    await apiClient.post('/settings/sepay/key', { apiKey })
+    throw new Error('SePay chưa được kết nối')
   },
 }

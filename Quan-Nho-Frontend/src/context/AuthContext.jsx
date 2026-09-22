@@ -1,21 +1,19 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { authApi } from '../api/authApi'
-import { mockDb } from '../api/mockDb'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(() => mockDb.getCurrentUser())
-  const [loading, setLoading] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Listen for auth changes across tabs
-    const unsubscribe = mockDb.subscribe((event) => {
-      if (event && event.type === 'AUTH_CHANGED') {
-        setCurrentUser(event.payload)
-      }
-    })
-    return unsubscribe
+    let mounted = true
+    authApi.getCurrentSession()
+      .then((user) => { if (mounted) setCurrentUser(user) })
+      .catch(() => { if (mounted) setCurrentUser(null) })
+      .finally(() => { if (mounted) setLoading(false) })
+    return () => { mounted = false }
   }, [])
 
   const login = async (username, password) => {

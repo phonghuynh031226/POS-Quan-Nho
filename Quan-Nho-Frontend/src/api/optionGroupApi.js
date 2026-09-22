@@ -1,44 +1,22 @@
-import { mockDb } from './mockDb.js'
+import apiClient from './apiClient'
 
-const delay = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms))
+const body = (response) => response.data
 
 export const optionGroupApi = {
-  // Get all option groups
-  async getOptionGroups() {
-    await delay(150)
-    return mockDb.getOptionGroups()
-  },
-
-  // Save (create or update) option group
+  async getOptionGroups() { return body(await apiClient.get('/options')) },
   async saveOptionGroup(group) {
-    await delay(200)
-    if (!group.name || !group.name.trim()) {
-      throw new Error('Tên nhóm tùy chọn không được để trống')
-    }
-    return mockDb.saveOptionGroup(group)
+    return body(group.id
+      ? await apiClient.put(`/options/${group.id}`, group)
+      : await apiClient.post('/options', group))
   },
-
-  // Delete option group
-  async deleteOptionGroup(id) {
-    await delay(200)
-    return mockDb.deleteOptionGroup(id)
-  },
-
-  // Get raw relations for a product
+  async deleteOptionGroup(id) { await apiClient.delete(`/options/${id}`); return true },
   async getProductOptionGroups(productId) {
-    await delay(100)
-    return mockDb.getProductOptionGroups(productId)
+    return body(await apiClient.get(productId ? `/products/${productId}/option-groups` : '/product-option-groups'))
   },
-
-  // Save relations between a product and option groups
   async saveProductOptionGroups(productId, relations) {
-    await delay(200)
-    return mockDb.saveProductOptionGroups(productId, relations)
+    return body(await apiClient.put(`/products/${productId}/option-groups`, relations))
   },
-
-  // Get detailed option groups for a product (resolved with options, display order, and overrides)
   async getProductOptionGroupsDetailed(productId) {
-    await delay(150)
-    return mockDb.getProductOptionGroupsDetailed(productId)
+    return body(await apiClient.get(`/products/${productId}/option-groups/detailed`))
   },
 }

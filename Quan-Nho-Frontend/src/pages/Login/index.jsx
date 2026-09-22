@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Coffee, Lock, User, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Coffee, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { DEMO_ACCOUNTS } from '../../constants'
 import Button from '../../components/common/Button'
 import Input from '../../components/common/Input'
 import { useToast } from '../../context/ToastContext'
@@ -34,12 +33,6 @@ export default function LoginPage() {
     } catch (err) {
       setError(err.message || 'Đăng nhập không thành công')
     }
-  }
-
-  const fillDemoAccount = (acc) => {
-    setUsername(acc.username)
-    setPassword('123456')
-    setError('')
   }
 
   return (
@@ -77,7 +70,6 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••"
-              helperText="Tài khoản demo mật khẩu: 123456"
               required
             />
 
@@ -99,36 +91,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Quick 1-Click Demo Account */}
-          <div className="pt-4 border-t border-[#E8DFD5] space-y-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#8C7A6B]">
-              <Sparkles className="w-4 h-4 text-[#C88A35]" />
-              <span>Bấm nhanh tài khoản Chủ quán để thử nghiệm:</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-              {DEMO_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.username}
-                  type="button"
-                  onClick={() => fillDemoAccount(acc)}
-                  className="p-3 rounded-xl border border-[#E8DFD5] bg-[#FAF7F2] hover:bg-[#F4EFEA] hover:border-[#C88A35] text-left transition cursor-pointer group flex items-center justify-between"
-                >
-                  <div>
-                    <div className="text-sm font-bold text-[#2D1B14] group-hover:text-[#C88A35]">
-                      {acc.name}
-                    </div>
-                    <div className="text-xs text-stone-500 font-mono">
-                      User: <strong>admin</strong> (hoặc <strong>giamdoc@gmail.com</strong>) | Pass: <strong>123456</strong>
-                    </div>
-                  </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded bg-[#EFE9E1] text-[#7A5A43] group-hover:bg-[#C88A35] group-hover:text-white transition">
-                    Chọn nhanh
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Security / Backend disclaimer notice */}

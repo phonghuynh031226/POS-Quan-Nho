@@ -216,7 +216,8 @@ export default function OptionGroupsPage() {
             return (
               <div
                 key={group.id}
-                className={`bg-white rounded-2xl border transition shadow-xs flex flex-col justify-between overflow-hidden ${
+                onClick={() => handleOpenEditModal(group)}
+                className={`bg-white rounded-2xl border transition shadow-xs flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-md ${
                   group.isActive !== false
                     ? 'border-[#E8DFD5] hover:border-[#C88A35]'
                     : 'border-stone-200 opacity-60 bg-stone-50'
@@ -269,7 +270,10 @@ export default function OptionGroupsPage() {
                     {/* Active toggle button */}
                     <button
                       type="button"
-                      onClick={() => handleToggleActive(group)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleToggleActive(group)
+                      }}
                       title={group.isActive !== false ? 'Đang bật' : 'Đã tắt'}
                       className={`p-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                         group.isActive !== false
@@ -336,7 +340,10 @@ export default function OptionGroupsPage() {
                       variant="secondary"
                       size="sm"
                       icon={Edit2}
-                      onClick={() => handleOpenEditModal(group)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleOpenEditModal(group)
+                      }}
                     >
                       Sửa
                     </Button>
@@ -344,7 +351,10 @@ export default function OptionGroupsPage() {
                       variant="outline"
                       size="sm"
                       icon={Trash2}
-                      onClick={() => setGroupToDelete(group)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setGroupToDelete(group)
+                      }}
                       className="text-rose-600 hover:bg-rose-50 border-rose-200"
                     >
                       Xóa

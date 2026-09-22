@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react'
-import QRCode from 'qrcode'
 import {
   Store,
   CreditCard,
-  Printer,
-  Monitor,
   Save,
   RotateCcw,
   CheckCircle2,
   AlertCircle,
-  QrCode,
   Wifi,
   Phone,
   MapPin,
@@ -28,22 +24,8 @@ import Modal from '../../components/common/Modal'
 import { settingsApi } from '../../api/settingsApi'
 import { useToast } from '../../context/ToastContext'
 
-const POPULAR_BANKS = [
-  'MB Bank (Quân Đội)',
-  'Vietcombank',
-  'Techcombank',
-  'ACB (Á Châu)',
-  'BIDV',
-  'VPBank',
-  'Agribank',
-  'TPBank',
-  'Sacombank',
-  'VIB',
-  'HDBank',
-]
-
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('store') // 'store' | 'payment' | 'print' | 'display'
+  const [activeTab, setActiveTab] = useState('store') // 'store' | 'payment'
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState(null)
@@ -51,7 +33,6 @@ export default function SettingsPage() {
   const [sepayApiKeyInput, setSepayApiKeyInput] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
   const [savingSepay, setSavingSepay] = useState(false)
-  const [qrPreviewUrl, setQrPreviewUrl] = useState('')
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
 
   const toast = useToast()
@@ -87,24 +68,6 @@ export default function SettingsPage() {
     }
   }
 
-  // Generate live VietQR preview whenever bank info changes
-  useEffect(() => {
-    if (settings?.bankAccountNumber && settings?.bankName) {
-      const bankCode = settings.bankName.includes('MB') ? 'MB' : 'VCB'
-      const sampleUrl = `https://img.vietqr.io/image/${bankCode}-${settings.bankAccountNumber}-compact2.png?amount=50000&addInfo=${encodeURIComponent(
-        (settings.transferContentPrefix || 'QUAN NHO') + ' TEST'
-      )}&accountName=${encodeURIComponent(settings.bankAccountName || '')}`
-
-      QRCode.toDataURL(sampleUrl, {
-        width: 220,
-        margin: 1,
-        color: { dark: '#2D1B14', light: '#ffffff' },
-      })
-        .then((url) => setQrPreviewUrl(url))
-        .catch(() => setQrPreviewUrl(''))
-    }
-  }, [settings?.bankAccountNumber, settings?.bankName, settings?.bankAccountName, settings?.transferContentPrefix])
-
   const handleFieldChange = (field, value) => {
     setSettings((prev) => ({
       ...prev,
@@ -118,18 +81,6 @@ export default function SettingsPage() {
     try {
       setSaving(true)
 
-      // 1. Lưu shop_settings chuẩn DB (Table 10)
-      await settingsApi.updateShopSettings({
-        id: 1,
-        shop_name: settings.storeName || settings.shop_name || 'Quán Nhỏ',
-        shop_address: settings.address || settings.shop_address || '',
-        wifi_name: settings.wifiName || settings.wifi_name || '',
-        wifi_password_encrypted: settings.wifiPass || settings.wifi_password_encrypted || '',
-        receipt_message: settings.receiptFooterMessage || settings.receipt_message || '',
-        show_wifi_on_receipt: settings.show_wifi_on_receipt !== false,
-      })
-
-      // 2. Lưu store settings tổng hợp
       const updated = await settingsApi.updateSettings(settings)
       setSettings((prev) => ({ ...prev, ...updated }))
       toast.success('Đã lưu cấu hình cài đặt quán thành công!')
@@ -187,9 +138,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'store', label: 'Thông tin in bill (shop_settings)', icon: Store },
-    { id: 'payment', label: 'Cổng SePay & VietQR', icon: CreditCard },
-    { id: 'print', label: 'Máy in & Hóa đơn', icon: Printer },
-    { id: 'display', label: 'Màn hình khách', icon: Monitor },
+    { id: 'payment', label: 'Cổng SePay (sepay_settings)', icon: CreditCard },
   ]
 
   return (
@@ -368,15 +317,15 @@ export default function SettingsPage() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 2: CỔNG SEPAY & VIETQR */}
+          {/* TAB 2: CỔNG SEPAY */}
           {/* ========================================================================= */}
           {activeTab === 'payment' && (
             <div className="space-y-6 animate-in fade-in duration-200">
               <div className="border-b border-[#F5EFEB] pb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-black text-[#2D1B14]">Cấu Hình Cổng SePay & Chuyển Khoản VietQR</h2>
+                  <h2 className="text-lg font-black text-[#2D1B14]">Cấu Hình Cổng SePay (sepay_settings)</h2>
                   <p className="text-xs text-stone-500 mt-0.5">
-                    Tích hợp tự động nhận diện thanh toán SePay và sinh mã VietQR động
+                    Tích hợp tự động nhận diện thanh toán SePay thông qua webhook
                   </p>
                 </div>
                 <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-lg">
@@ -441,303 +390,6 @@ export default function SettingsPage() {
                   </Button>
                 </form>
               </div>
-
-              {/* TÀI KHOẢN NGÂN HÀNG & VIETQR PREVIEW */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-2">
-                <div className="lg:col-span-7 space-y-4">
-                  <h3 className="text-xs font-bold text-stone-500 uppercase tracking-wider">
-                    Thông Tin Tài Khoản Nhận Chuyển Khoản
-                  </h3>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#3E2723] uppercase tracking-wider mb-1.5">
-                      Ngân hàng thụ hưởng
-                    </label>
-                    <select
-                      value={settings.bankName || 'MB Bank'}
-                      onChange={(e) => handleFieldChange('bankName', e.target.value)}
-                      className="w-full px-4 py-2.5 text-xs sm:text-sm bg-white border border-[#D4C7B8] rounded-xl text-[#2D1B14] focus:outline-none focus:ring-2 focus:ring-[#C88A35]"
-                    >
-                      {POPULAR_BANKS.map((bank) => (
-                        <option key={bank} value={bank}>
-                          {bank}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <Input
-                    label="Số tài khoản ngân hàng"
-                    value={settings.bankAccountNumber || ''}
-                    onChange={(e) => handleFieldChange('bankAccountNumber', e.target.value.replace(/\s/g, ''))}
-                    placeholder="Ví dụ: 0901234567"
-                    helperText="Số tài khoản nhận tiền chính thức của quán"
-                    required
-                  />
-
-                  <Input
-                    label="Tên chủ tài khoản (In hoa không dấu)"
-                    value={settings.bankAccountName || ''}
-                    onChange={(e) => handleFieldChange('bankAccountName', e.target.value.toUpperCase())}
-                    placeholder="Ví dụ: QUAN NHO COFFEE"
-                    helperText="Tên đăng ký tài khoản ngân hàng"
-                    required
-                  />
-
-                  <Input
-                    label="Tiền tố nội dung chuyển khoản"
-                    value={settings.transferContentPrefix || ''}
-                    onChange={(e) => handleFieldChange('transferContentPrefix', e.target.value.toUpperCase())}
-                    placeholder="Ví dụ: QUAN NHO"
-                    helperText="Cú pháp tự động điền: [Tiền tố] + [Mã đơn QN-xxx]"
-                  />
-                </div>
-
-                {/* Live QR Preview */}
-                <div className="lg:col-span-5 bg-[#FAF7F2] p-6 rounded-3xl border border-[#E8DFD5] text-center space-y-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7A5A43] flex items-center justify-center gap-1.5">
-                    <QrCode className="w-4 h-4 text-[#C88A35]" />
-                    <span>Xem trước mã VietQR quét thử:</span>
-                  </span>
-
-                  <div className="p-4 bg-white rounded-2xl border-2 border-[#C88A35] inline-block shadow-sm">
-                    {qrPreviewUrl ? (
-                      <img
-                        src={qrPreviewUrl}
-                        alt="VietQR Preview"
-                        className="w-48 h-48 mx-auto object-contain"
-                      />
-                    ) : (
-                      <div className="w-48 h-48 bg-stone-100 flex items-center justify-center rounded-lg text-stone-400">
-                        Chưa có mã QR
-                      </div>
-                    )}
-                    <div className="mt-2 text-center text-xs font-bold text-[#2D1B14]">
-                      {settings.bankName} • {settings.bankAccountNumber}
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-stone-500 leading-relaxed max-w-xs mx-auto">
-                    Mã VietQR tự động khớp tài khoản và tự điền mã đơn hàng tương thích webhook SePay.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 3: MÁY IN & HÓA ĐƠN */}
-          {/* ========================================================================= */}
-          {activeTab === 'print' && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              <div className="border-b border-[#F5EFEB] pb-4">
-                <h2 className="text-lg font-black text-[#2D1B14]">Cấu Hình Máy In Nhiệt & Phiếu In</h2>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Tối ưu hóa bản in nhiệt tương thích máy in K80 (80mm) và K58 (58mm)
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Khổ giấy in */}
-                <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8DFD5] space-y-2">
-                  <label className="block text-xs font-bold text-[#3E2723] uppercase tracking-wider">
-                    Khổ giấy in mặc định
-                  </label>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleFieldChange('defaultPaperSize', '80mm')}
-                      className={`p-3 rounded-xl font-bold text-xs transition cursor-pointer border ${
-                        settings.defaultPaperSize === '80mm'
-                          ? 'bg-[#3E2723] text-white border-[#3E2723] shadow-xs'
-                          : 'bg-white text-stone-700 border-[#D4C7B8] hover:bg-stone-50'
-                      }`}
-                    >
-                      K80 (80mm - Phổ biến)
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleFieldChange('defaultPaperSize', '58mm')}
-                      className={`p-3 rounded-xl font-bold text-xs transition cursor-pointer border ${
-                        settings.defaultPaperSize === '58mm'
-                          ? 'bg-[#3E2723] text-white border-[#3E2723] shadow-xs'
-                          : 'bg-white text-stone-700 border-[#D4C7B8] hover:bg-stone-50'
-                      }`}
-                    >
-                      K58 (58mm - Nhỏ gọn)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Chế độ in mặc định */}
-                <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8DFD5] space-y-2">
-                  <label className="block text-xs font-bold text-[#3E2723] uppercase tracking-wider">
-                    Chế độ in mặc định khi thanh toán
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleFieldChange('defaultPrintMode', 'both')}
-                      className={`p-2.5 rounded-xl font-bold text-xs transition cursor-pointer border ${
-                        settings.defaultPrintMode === 'both'
-                          ? 'bg-[#C88A35] text-white border-[#C88A35] shadow-xs'
-                          : 'bg-white text-stone-700 border-[#D4C7B8] hover:bg-stone-50'
-                      }`}
-                    >
-                      Cả 2 liên
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleFieldChange('defaultPrintMode', 'customer')}
-                      className={`p-2.5 rounded-xl font-bold text-xs transition cursor-pointer border ${
-                        settings.defaultPrintMode === 'customer'
-                          ? 'bg-[#3E2723] text-white border-[#3E2723] shadow-xs'
-                          : 'bg-white text-stone-700 border-[#D4C7B8] hover:bg-stone-50'
-                      }`}
-                    >
-                      Chỉ Khách
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleFieldChange('defaultPrintMode', 'kitchen')}
-                      className={`p-2.5 rounded-xl font-bold text-xs transition cursor-pointer border ${
-                        settings.defaultPrintMode === 'kitchen'
-                          ? 'bg-[#3E2723] text-white border-[#3E2723] shadow-xs'
-                          : 'bg-white text-stone-700 border-[#D4C7B8] hover:bg-stone-50'
-                      }`}
-                    >
-                      Chỉ Bếp
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tiêu đề phiếu bếp */}
-                <div className="sm:col-span-2">
-                  <Input
-                    label="Tiêu đề in trên phiếu chế biến của Bếp"
-                    value={settings.kitchenTitle || ''}
-                    onChange={(e) => handleFieldChange('kitchenTitle', e.target.value)}
-                    placeholder="*** PHIẾU BÁO CHẾ BIẾN (BẾP / BAR) ***"
-                    helperText="Dòng chữ nổi bật in hoa ở đầu phiếu để bếp dễ phân biệt"
-                  />
-                </div>
-
-                {/* Các checkbox tùy chọn */}
-                <div className="sm:col-span-2 space-y-3 pt-2">
-                  <label className="flex items-center gap-3 p-3.5 rounded-xl border border-[#E8DFD5] bg-[#FAF7F2] hover:bg-[#F5EFEB] cursor-pointer transition select-none">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoOpenPrint || false}
-                      onChange={(e) => handleFieldChange('autoOpenPrint', e.target.checked)}
-                      className="w-4 h-4 rounded text-[#C88A35] accent-[#C88A35]"
-                    />
-                    <div>
-                      <span className="font-bold text-xs sm:text-sm text-[#2D1B14] block">
-                        Tự động mở hộp thoại in sau khi bấm Xác nhận thanh toán
-                      </span>
-                      <span className="text-xs text-stone-500">
-                        Giúp thao tác bán hàng 1-chạm không cần bấm thêm nút in
-                      </span>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 p-3.5 rounded-xl border border-[#E8DFD5] bg-[#FAF7F2] hover:bg-[#F5EFEB] cursor-pointer transition select-none">
-                    <input
-                      type="checkbox"
-                      checked={settings.showQrOnReceipt ?? true}
-                      onChange={(e) => handleFieldChange('showQrOnReceipt', e.target.checked)}
-                      className="w-4 h-4 rounded text-[#C88A35] accent-[#C88A35]"
-                    />
-                    <div>
-                      <span className="font-bold text-xs sm:text-sm text-[#2D1B14] block">
-                        In mã QR tra cứu trạng thái đơn hàng trên hóa đơn khách
-                      </span>
-                      <span className="text-xs text-stone-500">
-                        Khách có thể quét mã QR trên bill để theo dõi trạng thái đơn hàng
-                      </span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 4: MÀN HÌNH KHÁCH */}
-          {/* ========================================================================= */}
-          {activeTab === 'display' && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              <div className="border-b border-[#F5EFEB] pb-4">
-                <h2 className="text-lg font-black text-[#2D1B14]">Cấu Hình Màn Hình Khách (Customer Facing Display)</h2>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Tùy chỉnh giao diện hiển thị trên màn hình phụ / tablet quay về phía khách hàng tại quầy
-                </p>
-              </div>
-
-              <div className="space-y-5">
-                <Input
-                  label="Tiêu đề chào mừng trên màn hình chờ"
-                  value={settings.customerDisplayWelcomeTitle || ''}
-                  onChange={(e) => handleFieldChange('customerDisplayWelcomeTitle', e.target.value)}
-                  placeholder="Hương vị thân quen, Gửi trọn yêu thương"
-                  helperText="Dòng thông điệp lớn xuất hiện khi màn hình ở trạng thái chờ khách"
-                />
-
-                <Input
-                  label="Phụ đề lời chào"
-                  value={settings.customerDisplaySubtitle || ''}
-                  onChange={(e) => handleFieldChange('customerDisplaySubtitle', e.target.value)}
-                  placeholder="Vui lòng xem menu và gọi món tại quầy. Chúng tôi luôn sẵn sàng phục vụ bạn!"
-                  helperText="Thông điệp hướng dẫn phụ đặt dưới tiêu đề chào mừng"
-                />
-
-                <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#E8DFD5] space-y-2">
-                  <label className="block text-xs font-bold text-[#3E2723] uppercase tracking-wider">
-                    Thời gian tự động quay về màn hình chờ sau khi thanh toán xong
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-                    {[
-                      { seconds: 3, label: '3 Giây (Nhanh)' },
-                      { seconds: 5, label: '5 Giây (Mặc định)' },
-                      { seconds: 8, label: '8 Giây' },
-                      { seconds: 10, label: '10 Giây (Dài)' },
-                    ].map((item) => (
-                      <button
-                        key={item.seconds}
-                        type="button"
-                        onClick={() => handleFieldChange('autoResetDelaySeconds', item.seconds)}
-                        className={`p-3 rounded-xl font-bold text-xs transition cursor-pointer border ${
-                          settings.autoResetDelaySeconds === item.seconds
-                            ? 'bg-[#2D1B14] text-white border-[#2D1B14] shadow-xs'
-                            : 'bg-white text-stone-700 border-[#D4C7B8] hover:bg-stone-50'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <label className="flex items-center gap-3 p-3.5 rounded-xl border border-[#E8DFD5] bg-[#FAF7F2] hover:bg-[#F5EFEB] cursor-pointer transition select-none">
-                  <input
-                    type="checkbox"
-                    checked={settings.showFeaturedItems ?? true}
-                    onChange={(e) => handleFieldChange('showFeaturedItems', e.target.checked)}
-                    className="w-4 h-4 rounded text-[#C88A35] accent-[#C88A35]"
-                  />
-                  <div>
-                    <span className="font-bold text-xs sm:text-sm text-[#2D1B14] block">
-                      Hiển thị danh sách món đặc sắc / nổi bật trên màn hình chờ
-                    </span>
-                    <span className="text-xs text-stone-500">
-                      Gợi ý các món bán chạy của quán khi khách hàng đang đứng chờ gọi món
-                    </span>
-                  </div>
-                </label>
-              </div>
             </div>
           )}
         </div>
@@ -756,7 +408,7 @@ export default function SettingsPage() {
             <div className="text-xs space-y-1">
               <p className="font-bold">Bạn có chắc chắn muốn đặt lại cài đặt gốc?</p>
               <p className="text-amber-800">
-                Toàn bộ thông tin in bill, SePay API Key, VietQR và cấu hình màn hình khách sẽ được đưa về giá trị thiết lập ban đầu.
+                Toàn bộ thông tin in bill và SePay API Key sẽ được đưa về giá trị thiết lập ban đầu.
               </p>
             </div>
           </div>

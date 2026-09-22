@@ -12,6 +12,10 @@ import {
   ArrowDown,
   Circle,
   CheckCircle2,
+  X,
+  Eye,
+  Coffee,
+  Utensils,
 } from 'lucide-react'
 import Modal from '../common/Modal'
 import Input from '../common/Input'
@@ -110,7 +114,6 @@ export default function MenuItemModal({
   const [selectedGroups, setSelectedGroups] = useState([])
 
   const [formErrors, setFormErrors] = useState({})
-  const [showImagePicker, setShowImagePicker] = useState(false)
 
   const generateCode = (text) => {
     return text
@@ -127,7 +130,6 @@ export default function MenuItemModal({
     if (!isOpen) return
 
     setFormErrors({})
-    setShowImagePicker(false)
 
     if (initialItem && initialItem.name) {
       setId(initialItem.id || '')
@@ -135,7 +137,7 @@ export default function MenuItemModal({
       setName(initialItem.name || '')
       setCategory(initialItem.category_id || initialItem.category || (categories[0]?.id || 'COFFEE'))
       setPrice(initialItem.base_price || initialItem.price || 30000)
-      setImage(initialItem.image_url || initialItem.image || PRESET_IMAGES[0].url)
+      setImage(initialItem.image_url || initialItem.image || '')
       setIsAvailable(initialItem.is_available !== false && initialItem.isAvailable !== false)
 
       // Load existing relations for this product
@@ -152,7 +154,7 @@ export default function MenuItemModal({
       setName('')
       setCategory(categories[0]?.id || 'COFFEE')
       setPrice(30000)
-      setImage(PRESET_IMAGES[0].url)
+      setImage('')
       setIsAvailable(true)
       setSelectedGroups([])
     }
@@ -247,8 +249,8 @@ export default function MenuItemModal({
       category: selectedCatObj ? selectedCatObj.code : category,
       base_price: Number(price),
       price: Number(price),
-      image_url: image.trim() || PRESET_IMAGES[0].url,
-      image: image.trim() || PRESET_IMAGES[0].url,
+      image_url: image ? image.trim() : '',
+      image: image ? image.trim() : '',
       is_available: isAvailable,
       isAvailable,
       hasOptions: selectedGroups.length > 0,
@@ -257,371 +259,455 @@ export default function MenuItemModal({
     onSave(payload, selectedGroups)
   }
 
+  const currentCategoryObj = categories.find((c) => c.id === category || c.code === category)
+  const categoryName =
+    currentCategoryObj?.name ||
+    (category === 'COFFEE'
+      ? 'Cà phê'
+      : category === 'OTHER_DRINKS'
+      ? 'Trà & Nước khác'
+      : 'Đồ ăn vặt')
+  const isFoodCategory = currentCategoryObj?.type === 'FOOD' || category === 'SNACKS'
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={id ? 'Chỉnh sửa món' : 'Thêm món mới vào thực đơn'}
       subtitle="Thiết lập tên món, danh mục, đơn giá và các nhóm tùy chọn dùng chung"
-      maxWidth="max-w-2xl"
+      maxWidth="max-w-4xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* 1. Basic Item Info */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#3E2723]">
-              1. Thông tin món
-            </span>
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-700">
-              <input
-                type="checkbox"
-                checked={isAvailable}
-                onChange={(e) => setIsAvailable(e.target.checked)}
-                className="w-4 h-4 rounded text-[#C88A35] focus:ring-[#C88A35]"
-              />
-              <span>Đang có sẵn để bán</span>
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <Input
-                label="Tên món"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value)
-                  setFormErrors({ ...formErrors, name: '' })
-                  if (!code || !id) {
-                    setCode(generateCode(e.target.value))
-                  }
-                }}
-                error={formErrors.name}
-                placeholder="Ví dụ: Cà phê sữa, Trà đào cam sả, Bánh mì que..."
-                required
-                autoFocus
-              />
-            </div>
-
-            <div>
-              <Input
-                label="Mã món (code)"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/\s+/g, '_'))}
-                placeholder="CA_PHE_SUA_DA"
-                helperText="Mã định danh duy nhất"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-semibold text-[#3E2723]">
-                  Danh mục món
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* CỘT TRÁI (6/12): THÔNG TIN MÓN & HÌNH ẢNH */}
+          <div className="lg:col-span-6 space-y-3.5">
+            {/* 1. Basic Item Info */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#3E2723]">
+                  1. Thông tin món
+                </span>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-stone-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={isAvailable}
+                    onChange={(e) => setIsAvailable(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-[#C88A35] accent-[#C88A35]"
+                  />
+                  <span>Đang có sẵn để bán</span>
                 </label>
-                {onOpenCategoryManager && (
-                  <button
-                    type="button"
-                    onClick={onOpenCategoryManager}
-                    className="text-[11px] text-[#C88A35] hover:underline font-bold cursor-pointer"
-                  >
-                    + Quản lý danh mục
-                  </button>
-                )}
               </div>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full text-sm py-3 px-4 rounded-xl border border-[#D4C7B8] bg-white text-[#2D1B14] focus:outline-none focus:ring-2 focus:ring-[#C88A35]"
-              >
-                {categories && categories.length > 0 ? (
-                  categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="COFFEE">Cà phê</option>
-                    <option value="OTHER_DRINKS">Trà & Nước khác</option>
-                    <option value="SNACKS">Đồ ăn vặt</option>
-                  </>
-                )}
-              </select>
-            </div>
 
-            <Input
-              label="Giá bán cơ bản (VNĐ)"
-              type="number"
-              step="1000"
-              value={price}
-              onChange={(e) => {
-                setPrice(Number(e.target.value))
-                setFormErrors({ ...formErrors, price: '' })
-              }}
-              error={formErrors.price}
-              placeholder="30000"
-              required
-            />
-          </div>
-        </div>
-
-        {/* 2. Image Representation */}
-        <div className="space-y-3 pt-2 border-t border-[#E8DFD5]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#3E2723]">
-              2. Hình ảnh món
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowImagePicker(!showImagePicker)}
-              className="text-xs text-[#C88A35] hover:text-[#96631F] font-bold inline-flex items-center gap-1 cursor-pointer"
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>{showImagePicker ? 'Thu gọn ảnh mẫu' : 'Chọn ảnh mẫu có sẵn'}</span>
-            </button>
-          </div>
-
-          {/* Preset Images Grid */}
-          {showImagePicker && (
-            <div className="p-3 bg-white rounded-xl border border-[#E8DFD5] space-y-2">
-              <p className="text-[11px] text-stone-500 font-medium">
-                Bấm vào một hình ảnh mẫu bên dưới để áp dụng nhanh:
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1">
-                {PRESET_IMAGES.map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setImage(img.url)
-                      setShowImagePicker(false)
-                    }}
-                    className={`group relative rounded-lg overflow-hidden border aspect-square transition cursor-pointer ${
-                      image === img.url
-                        ? 'ring-2 ring-[#C88A35] border-[#C88A35]'
-                        : 'border-stone-200 hover:opacity-90'
-                    }`}
-                  >
-                    <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
-                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] truncate px-1 py-0.5 text-center">
-                      {img.name}
-                    </span>
-                    {image === img.url && (
-                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#C88A35] text-white flex items-center justify-center">
-                        <Check className="w-3 h-3" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Current Image Preview & Upload Controls */}
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-xl overflow-hidden border border-[#D4C7B8] bg-stone-100 shrink-0">
-              <img
-                src={image}
-                alt="Xem trước"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = PRESET_IMAGES[0].url
-                }}
-              />
-            </div>
-
-            <div className="flex-1 w-full flex items-center gap-2">
-              <input
-                type="text"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="Dán link ảnh (URL)..."
-                className="flex-1 text-xs py-2 px-3 rounded-lg border border-[#D4C7B8] bg-white text-[#2D1B14] focus:outline-none focus:ring-1 focus:ring-[#C88A35]"
-              />
-              <label className="shrink-0 px-3 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold cursor-pointer border border-[#D4C7B8] flex items-center gap-1.5 transition">
-                <Upload className="w-3.5 h-3.5 text-stone-600" />
-                <span>Tải ảnh</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
+              <div className="space-y-2.5">
+                <Input
+                  label="Tên món"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    setFormErrors({ ...formErrors, name: '' })
+                    if (!code || !id) {
+                      setCode(generateCode(e.target.value))
+                    }
+                  }}
+                  error={formErrors.name}
+                  placeholder="Ví dụ: Cà phê sữa, Trà đào cam sả, Bánh mì que..."
+                  required
+                  autoFocus
                 />
-              </label>
-            </div>
-          </div>
-        </div>
 
-        {/* 3. Shared Option Groups Selection (Nhóm tùy chọn áp dụng) */}
-        <div className="space-y-4 pt-2 border-t border-[#E8DFD5]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <SlidersHorizontal className="w-4 h-4 text-[#C88A35]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-[#3E2723]">
-                3. Nhóm tùy chọn áp dụng ({selectedGroups.length} nhóm)
-              </span>
-            </div>
-
-            {onOpenOptionGroupManager && (
-              <button
-                type="button"
-                onClick={onOpenOptionGroupManager}
-                className="text-xs text-[#C88A35] hover:text-[#96631F] font-bold inline-flex items-center gap-1 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Quản lý nhóm tùy chọn</span>
-              </button>
-            )}
-          </div>
-
-          <p className="text-xs text-stone-500">
-            Chọn các nhóm tùy chọn dùng chung (Size, Nhiệt độ, Topping...) mà khách được phép tùy biến khi gọi món này:
-          </p>
-
-          {/* Option Groups Selector List */}
-          <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-            {optionGroups.length === 0 ? (
-              <div className="p-4 bg-stone-50 rounded-xl border border-[#D4C7B8] text-xs text-stone-500 text-center">
-                Chưa có nhóm tùy chọn nào trong hệ thống. Hãy bấm vào "Quản lý nhóm tùy chọn" để tạo mới.
-              </div>
-            ) : (
-              optionGroups.map((group) => {
-                const relationIndex = selectedGroups.findIndex(
-                  (sg) => sg.optionGroupId === group.id
-                )
-                const isSelected = relationIndex !== -1
-                const relation = isSelected ? selectedGroups[relationIndex] : null
-                const isSingle = group.selectionType === 'SINGLE'
-
-                return (
-                  <div
-                    key={group.id}
-                    className={`p-3.5 rounded-xl border transition ${
-                      isSelected
-                        ? 'bg-white border-[#C88A35] shadow-xs'
-                        : 'bg-stone-50 border-[#D4C7B8] opacity-75'
-                    }`}
-                  >
-                    {/* Header line of group */}
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleGroup(group)}
-                          className="w-4 h-4 rounded text-[#C88A35] focus:ring-[#C88A35]"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs sm:text-sm text-[#2D1B14] truncate">
-                              {group.name}
-                            </span>
-                            {group.code && (
-                              <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-300">
-                                {group.code}
-                              </span>
-                            )}
-                            <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                                isSingle
-                                  ? 'bg-amber-50 text-amber-900 border border-amber-200'
-                                  : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-                              }`}
-                            >
-                              {isSingle ? 'Chọn 1' : 'Chọn nhiều'}
-                            </span>
-                          </div>
-                          <div className="text-[11px] text-stone-500 truncate mt-0.5">
-                            {group.options?.map((o) => o.name).join(', ') || 'Chưa có lựa chọn'}
-                          </div>
-                        </div>
+                <div className="grid grid-cols-2 gap-3 items-start">
+                  <div className="w-full space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-semibold text-[#3E2723]">
+                        Danh mục món
                       </label>
-
-                      {/* Sorting buttons if selected */}
-                      {isSelected && (
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            disabled={relationIndex === 0}
-                            onClick={() => handleMoveGroupOrder(relationIndex, -1)}
-                            className="p-1.5 rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30 cursor-pointer text-stone-700"
-                            title="Di chuyển lên trên"
-                          >
-                            <ArrowUp className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={relationIndex === selectedGroups.length - 1}
-                            onClick={() => handleMoveGroupOrder(relationIndex, 1)}
-                            className="p-1.5 rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30 cursor-pointer text-stone-700"
-                            title="Di chuyển xuống dưới"
-                          >
-                            <ArrowDown className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                      {onOpenCategoryManager && (
+                        <button
+                          type="button"
+                          onClick={onOpenCategoryManager}
+                          className="text-xs text-[#C88A35] hover:underline font-semibold cursor-pointer"
+                        >
+                          + Danh mục
+                        </button>
                       )}
                     </div>
+                    <div className="relative rounded-xl shadow-xs">
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="block w-full rounded-xl border transition-all text-sm font-medium py-3 px-4 bg-white border-[#D4C7B8] text-[#2D1B14] focus:outline-none focus:border-[#C88A35] focus:ring-2 focus:ring-[#F5E6D0] cursor-pointer"
+                      >
+                        {categories && categories.length > 0 ? (
+                          categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="COFFEE">Cà phê</option>
+                            <option value="OTHER_DRINKS">Trà & Nước khác</option>
+                            <option value="SNACKS">Đồ ăn vặt</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                  </div>
 
-                    {/* Override settings row when selected */}
-                    {isSelected && (
-                      <div className="mt-3 pt-2.5 border-t border-[#E8DFD5] flex flex-wrap items-center justify-between gap-3 text-xs">
-                        <label className="flex items-center gap-2 cursor-pointer font-semibold text-stone-700">
+                  <Input
+                    label="Giá bán cơ bản (VNĐ)"
+                    type="number"
+                    step="1000"
+                    value={price}
+                    onChange={(e) => {
+                      setPrice(Number(e.target.value))
+                      setFormErrors({ ...formErrors, price: '' })
+                    }}
+                    error={formErrors.price}
+                    placeholder="30000"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Image Representation (Tùy chọn: có thể thêm hoặc không thêm ảnh) */}
+            <div className="space-y-2.5 pt-2.5 border-t border-[#E8DFD5]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#3E2723] flex items-center gap-1.5">
+                  2. Hình ảnh món <span className="text-stone-400 text-[11px] font-normal normal-case">(không bắt buộc)</span>
+                </span>
+              </div>
+
+              {/* Current Image Preview & Upload Controls */}
+              <div className="flex items-center gap-2.5">
+                <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-[#D4C7B8] bg-[#F7F3EE] shrink-0 flex items-center justify-center">
+                  {image ? (
+                    <>
+                      <img
+                        src={image}
+                        alt="Xem trước"
+                        className="w-full h-full object-cover"
+                        onError={() => setImage('')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setImage('')}
+                        title="Bỏ ảnh này"
+                        className="absolute inset-0 bg-black/50 text-white opacity-0 hover:opacity-100 flex items-center justify-center transition cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-300" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-stone-400">
+                      <ImageIcon className="w-4 h-4 opacity-50" />
+                      <span className="text-[8px] font-bold mt-0.5">Không ảnh</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 w-full flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={image}
+                      onChange={(e) => setImage(e.target.value)}
+                      placeholder="Dán link ảnh (không bắt buộc)..."
+                      className="w-full text-xs py-2 pl-2.5 pr-7 rounded-lg border border-[#D4C7B8] bg-white text-[#2D1B14] focus:outline-none focus:ring-1 focus:ring-[#C88A35]"
+                    />
+                    {image && (
+                      <button
+                        type="button"
+                        onClick={() => setImage('')}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
+                        title="Xóa link ảnh"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {image && (
+                    <button
+                      type="button"
+                      onClick={() => setImage('')}
+                      className="shrink-0 px-2.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold cursor-pointer border border-rose-200 flex items-center gap-1 transition"
+                      title="Không dùng ảnh cho món này"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Bỏ ảnh</span>
+                    </button>
+                  )}
+
+                  <label className="shrink-0 px-2.5 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold cursor-pointer border border-[#D4C7B8] flex items-center gap-1.5 transition">
+                    <Upload className="w-3.5 h-3.5 text-stone-600" />
+                    <span>Tải ảnh</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Card Preview trên màn hình bán hàng POS */}
+            <div className="pt-2.5 border-t border-[#E8DFD5] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#3E2723] flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-[#C88A35]" />
+                  Xem trước thẻ món (màn hình POS)
+                </span>
+                <span className="text-[10px] text-stone-400 font-semibold bg-stone-100 px-2 py-0.5 rounded-full">
+                  Trực tiếp
+                </span>
+              </div>
+
+              {/* Live Preview Card */}
+              <div className="p-2.5 bg-gradient-to-br from-[#FDFBF7] to-[#F5EFEB] rounded-xl border border-[#E8DFD5] shadow-xs flex items-center gap-3">
+                {/* Thumbnail */}
+                <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-white shrink-0 border border-[#E8DFD5] flex items-center justify-center">
+                  {image ? (
+                    <img
+                      src={image}
+                      alt={name || 'Xem trước'}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-stone-400 p-1">
+                      {isFoodCategory ? (
+                        <Utensils className="w-5 h-5 text-stone-300" />
+                      ) : (
+                        <Coffee className="w-5 h-5 text-stone-300" />
+                      )}
+                      <span className="text-[8px] font-bold text-stone-400 mt-0.5">Không ảnh</span>
+                    </div>
+                  )}
+
+                  {!isAvailable && (
+                    <div className="absolute inset-0 bg-stone-900/60 flex items-center justify-center">
+                      <span className="px-1 py-0.5 bg-rose-600 text-white text-[8px] font-black uppercase rounded">
+                        Hết món
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <h4 className="font-bold text-xs text-[#2D1B14] truncate">
+                      {name.trim() || 'Tên món ăn / thức uống'}
+                    </h4>
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                        isAvailable
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-rose-100 text-rose-700'
+                      }`}
+                    >
+                      {isAvailable ? 'Đang bán' : 'Tạm hết'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-1 text-xs">
+                    <span className="font-extrabold text-[#C88A35]">
+                      {formatCurrency(price || 0)}
+                    </span>
+                    <span className="text-stone-300">•</span>
+                    <span className="text-[11px] text-stone-500 truncate">{categoryName}</span>
+                  </div>
+
+                  <div className="mt-1 flex items-center gap-1 text-[10px] text-stone-500">
+                    <SlidersHorizontal className="w-3 h-3 text-[#C88A35]" />
+                    <span>
+                      {selectedGroups.length > 0
+                        ? `${selectedGroups.length} nhóm tùy chọn áp dụng`
+                        : 'Không có tùy chọn'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CỘT PHẢI (6/12): NHÓM TÙY CHỌN ÁP DỤNG */}
+          <div className="lg:col-span-6 space-y-2.5 flex flex-col">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#C88A35]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#3E2723]">
+                  3. Nhóm tùy chọn áp dụng ({selectedGroups.length} nhóm)
+                </span>
+              </div>
+
+              {onOpenOptionGroupManager && (
+                <button
+                  type="button"
+                  onClick={onOpenOptionGroupManager}
+                  className="text-[11px] text-[#C88A35] hover:text-[#96631F] font-bold inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Quản lý nhóm tùy chọn</span>
+                </button>
+              )}
+            </div>
+
+            <p className="text-[11px] text-stone-500">
+              Chọn các nhóm tùy chọn dùng chung (Size, Nhiệt độ, Topping...) cho món này:
+            </p>
+
+            {/* Option Groups Selector List */}
+            <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+              {optionGroups.length === 0 ? (
+                <div className="p-4 bg-stone-50 rounded-xl border border-[#D4C7B8] text-xs text-stone-500 text-center">
+                  Chưa có nhóm tùy chọn nào trong hệ thống. Hãy bấm vào "Quản lý nhóm tùy chọn" để tạo mới.
+                </div>
+              ) : (
+                optionGroups.map((group) => {
+                  const relationIndex = selectedGroups.findIndex(
+                    (sg) => sg.optionGroupId === group.id
+                  )
+                  const isSelected = relationIndex !== -1
+                  const relation = isSelected ? selectedGroups[relationIndex] : null
+                  const isSingle = group.selectionType === 'SINGLE'
+
+                  return (
+                    <div
+                      key={group.id}
+                      className={`p-2.5 rounded-xl border transition ${
+                        isSelected
+                          ? 'bg-white border-[#C88A35] shadow-xs'
+                          : 'bg-stone-50 border-[#D4C7B8] opacity-75'
+                      }`}
+                    >
+                      {/* Header line of group */}
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                           <input
                             type="checkbox"
-                            checked={Boolean(relation.required)}
-                            onChange={(e) =>
-                              handleUpdateGroupRelation(
-                                group.id,
-                                'required',
-                                e.target.checked
-                              )
-                            }
-                            className="w-3.5 h-3.5 rounded text-[#C88A35]"
+                            checked={isSelected}
+                            onChange={() => handleToggleGroup(group)}
+                            className="w-3.5 h-3.5 rounded text-[#C88A35] accent-[#C88A35]"
                           />
-                          <span>Bắt buộc chọn món này (Required)</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-[#2D1B14] truncate">
+                                {group.name}
+                              </span>
+                              {group.code && (
+                                <span className="text-[9px] uppercase font-bold px-1 rounded bg-stone-100 text-stone-600 border border-stone-300">
+                                  {group.code}
+                                </span>
+                              )}
+                              <span
+                                className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
+                                  isSingle
+                                    ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                                    : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                                }`}
+                              >
+                                {isSingle ? 'Chọn 1' : 'Chọn nhiều'}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-stone-500 truncate mt-0.5">
+                              {group.options?.map((o) => o.name).join(', ') || 'Chưa có lựa chọn'}
+                            </div>
+                          </div>
                         </label>
 
-                        {!isSingle && (
-                          <div className="flex items-center gap-1.5 font-semibold text-stone-700">
-                            <span>Tối đa chọn:</span>
-                            <input
-                              type="number"
-                              min="1"
-                              max="20"
-                              value={relation.maxSelect || 1}
-                              onChange={(e) =>
-                                handleUpdateGroupRelation(
-                                  group.id,
-                                  'maxSelect',
-                                  Math.max(1, Number(e.target.value) || 1)
-                                )
-                              }
-                              className="w-14 py-0.5 px-2 rounded border border-[#D4C7B8] bg-white text-center font-bold text-[#2D1B14]"
-                            />
-                            <span>lựa chọn</span>
+                        {/* Sorting buttons if selected */}
+                        {isSelected && (
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              disabled={relationIndex === 0}
+                              onClick={() => handleMoveGroupOrder(relationIndex, -1)}
+                              className="p-1 rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30 cursor-pointer text-stone-700"
+                              title="Di chuyển lên trên"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={relationIndex === selectedGroups.length - 1}
+                              onClick={() => handleMoveGroupOrder(relationIndex, 1)}
+                              className="p-1 rounded bg-stone-100 hover:bg-stone-200 disabled:opacity-30 cursor-pointer text-stone-700"
+                              title="Di chuyển xuống dưới"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </button>
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
-                )
-              })
-            )}
+
+                      {/* Override settings row when selected */}
+                      {isSelected && (
+                        <div className="mt-2 pt-2 border-t border-[#E8DFD5] flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-stone-700 text-[11px] select-none">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(relation.required)}
+                              onChange={(e) =>
+                                handleUpdateGroupRelation(
+                                  group.id,
+                                  'required',
+                                  e.target.checked
+                                )
+                              }
+                              className="w-3 h-3 rounded text-[#C88A35] accent-[#C88A35]"
+                            />
+                            <span>Bắt buộc chọn món này (Required)</span>
+                          </label>
+
+                          {!isSingle && (
+                            <div className="flex items-center gap-1 font-semibold text-stone-700 text-[11px]">
+                              <span>Tối đa:</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="20"
+                                value={relation.maxSelect || 1}
+                                onChange={(e) =>
+                                  handleUpdateGroupRelation(
+                                    group.id,
+                                    'maxSelect',
+                                    Math.max(1, Number(e.target.value) || 1)
+                                  )
+                                }
+                                className="w-12 py-0.5 px-1.5 rounded border border-[#D4C7B8] bg-white text-center font-bold text-[#2D1B14]"
+                              />
+                              <span>chọn</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="pt-4 border-t border-[#E8DFD5] flex items-center justify-end gap-3">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+        {/* Action Buttons Footer */}
+        <div className="pt-3 border-t border-[#E8DFD5] flex items-center justify-end gap-2.5">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isSubmitting} className="text-xs">
             Hủy
           </Button>
           <Button
             type="submit"
             variant="accent"
+            size="sm"
             loading={isSubmitting}
             icon={Save}
-            className="px-6 shadow-md"
+            className="px-5 shadow-sm text-xs font-bold"
           >
             {id ? 'Cập nhật món' : 'Lưu vào thực đơn'}
           </Button>

@@ -1,22 +1,21 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import AppLayout from '../components/layout/AppLayout'
 import ProtectedRoute from '../components/layout/ProtectedRoute'
 import LoginPage from '../pages/Login'
 import PosPage from '../pages/Pos'
-import KitchenPage from '../pages/Kitchen'
-import TrackingPage from '../pages/Tracking'
 import CustomerDisplayPage from '../pages/CustomerDisplay'
 import MenuManagementPage from '../pages/MenuManagement'
 import OptionGroupsPage from '../pages/OptionGroups'
 import OrderHistoryPage from '../pages/OrderHistory'
 import ReportsPage from '../pages/Reports'
 import SettingsPage from '../pages/Settings'
-import StaffManagementPage from '../pages/StaffManagement'
 
 // Helper component to redirect logged in users to pos screen
 function HomeRedirect() {
-  const raw = localStorage.getItem('pos_qn_current_user_v1')
-  if (!raw) return <Navigate to="/login" replace />
+  const { currentUser, loading } = useAuth()
+  if (loading) return null
+  if (!currentUser) return <Navigate to="/login" replace />
   return <Navigate to="/pos" replace />
 }
 
@@ -29,12 +28,6 @@ export const router = createBrowserRouter([
   {
     path: '/customer-display',
     element: <Navigate to="/display" replace />,
-  },
-
-  // Public route for customer QR tracking (No auth needed!)
-  {
-    path: '/track/:token',
-    element: <TrackingPage />,
   },
 
   // Public route for login

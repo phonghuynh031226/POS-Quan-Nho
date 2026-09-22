@@ -4,8 +4,10 @@ import Button from '../common/Button'
 import { ShieldAlert } from 'lucide-react'
 
 export default function ProtectedRoute({ children, allowedRoles }) {
-  const { currentUser, hasRole } = useAuth()
+  const { currentUser, hasRole, loading } = useAuth()
   const location = useLocation()
+
+  if (loading) return null
 
   if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />

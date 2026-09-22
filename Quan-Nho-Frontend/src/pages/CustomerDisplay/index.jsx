@@ -20,7 +20,7 @@ import {
   sendDisplayState,
 } from '../../utils/customerDisplaySync'
 import { formatCurrency, formatDateTime } from '../../utils/formatters'
-import { mockDb } from '../../api/mockDb'
+import { DEFAULT_STORE_SETTINGS } from '../../constants'
 
 // Danh sách món nổi bật giới thiệu khi ở màn hình chờ
 const FEATURED_ITEMS = [
@@ -48,24 +48,18 @@ const FEATURED_ITEMS = [
 ]
 
 export default function CustomerDisplayPage() {
-  const [storeSettings, setStoreSettings] = useState(() => mockDb.getStoreSettings())
+  const [storeSettings] = useState(DEFAULT_STORE_SETTINGS)
   const [displayData, setDisplayData] = useState(() => getDisplayState())
   const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [countdown, setCountdown] = useState(() => storeSettings.autoResetDelaySeconds || 5)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
 
-  // Đồng hồ thời gian thực & Lắng nghe settings
+  // Đồng hồ thời gian thực
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
-    const unsub = mockDb.subscribe((e) => {
-      if (e?.type === 'SETTINGS_UPDATED') {
-        setStoreSettings(mockDb.getStoreSettings())
-      }
-    })
     return () => {
       clearInterval(timer)
-      unsub()
     }
   }, [])
 

@@ -45,10 +45,10 @@ public class MenuController {
     }
 
     @GetMapping("/menu") public List<Map<String, Object>> menu() {
-        return jdbc.query("SELECT p.id,p.category_id,c.code AS category,p.code,p.name,p.base_price,p.image_url," +
+        return jdbc.query("SELECT p.id,p.category_id,c.code AS category,c.name AS category_name,p.code,p.name,p.base_price,p.image_url," +
                 "p.is_available,p.display_order FROM products p JOIN categories c ON c.id=p.category_id " +
                 "ORDER BY p.display_order,p.id", (rs, row) -> productMap(rs.getLong("id"), rs.getLong("category_id"),
-                rs.getString("category"), rs.getString("code"), rs.getString("name"), rs.getLong("base_price"),
+                rs.getString("category"), rs.getString("category_name"), rs.getString("code"), rs.getString("name"), rs.getLong("base_price"),
                 rs.getString("image_url"), rs.getBoolean("is_available"), rs.getInt("display_order")));
     }
 
@@ -85,18 +85,19 @@ public class MenuController {
     }
 
     private Map<String, Object> product(long id) {
-        return jdbc.query("SELECT p.id,p.category_id,c.code AS category,p.code,p.name,p.base_price,p.image_url," +
+        return jdbc.query("SELECT p.id,p.category_id,c.code AS category,c.name AS category_name,p.code,p.name,p.base_price,p.image_url," +
                 "p.is_available,p.display_order FROM products p JOIN categories c ON c.id=p.category_id WHERE p.id=?",
                 (rs, row) -> productMap(rs.getLong("id"), rs.getLong("category_id"), rs.getString("category"),
-                        rs.getString("code"), rs.getString("name"), rs.getLong("base_price"),
+                        rs.getString("category_name"), rs.getString("code"), rs.getString("name"), rs.getLong("base_price"),
                         rs.getString("image_url"), rs.getBoolean("is_available"), rs.getInt("display_order")), id)
                 .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
-    private static Map<String, Object> productMap(long id, long categoryId, String category, String code,
+    private static Map<String, Object> productMap(long id, long categoryId, String category, String categoryName, String code,
             String name, long price, String image, boolean available, int displayOrder) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", id); result.put("category_id", categoryId); result.put("category", category);
+        result.put("category_name", categoryName); result.put("categoryName", categoryName);
         result.put("code", code); result.put("name", name); result.put("base_price", price); result.put("price", price);
         result.put("image_url", image); result.put("image", image); result.put("is_available", available);
         result.put("isAvailable", available); result.put("display_order", displayOrder);

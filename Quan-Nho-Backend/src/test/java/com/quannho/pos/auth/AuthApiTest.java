@@ -8,6 +8,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -22,5 +23,10 @@ class AuthApiTest {
                 .content("{\"username\":\"admin\",\"password\":\"123456\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("OWNER"));
+    }
+
+    @Test void sessionProbeReturnsNoContentInsteadOfUnauthorizedWhenLoggedOut() throws Exception {
+        mvc.perform(get("/api/auth/me"))
+                .andExpect(status().isNoContent());
     }
 }

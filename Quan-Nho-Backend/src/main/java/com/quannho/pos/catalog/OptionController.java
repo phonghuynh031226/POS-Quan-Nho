@@ -42,14 +42,23 @@ public class OptionController {
         Map<String, Object> old = group(id);
         boolean required = MenuController.bool(MenuController.first(body, "default_required", "required"), false);
         int max = MenuController.integer(MenuController.first(body, "default_max_select", "maxSelect"), 1);
+        boolean active = body.containsKey("isActive")
+                ? MenuController.bool(body.get("isActive"), true)
+                : MenuController.bool(body.get("is_active"), true);
         jdbc.update("UPDATE option_groups SET code=?,name=?,selection_type=?,default_required=?," +
                         "default_min_select=?,default_max_select=?,display_order=?,is_active=?,updated_at=now() WHERE id=?",
                 MenuController.code(body.getOrDefault("code", old.get("code")), "GROUP"), MenuController.required(body, "name"),
                 String.valueOf(MenuController.first(body, "selection_type", "selectionType")), required,
                 MenuController.integer(body.get("default_min_select"), required ? 1 : 0), max,
                 MenuController.integer(MenuController.first(body, "display_order", "displayOrder"), 0),
-                MenuController.bool(MenuController.first(body, "is_active", "isActive"), true), id);
+                active, id);
         saveValues(id, body);
+        return group(id);
+    }
+
+    @PatchMapping("/options/{id}/availability") public Map<String, Object> toggleAvailability(@PathVariable long id) {
+        if (jdbc.update("UPDATE option_groups SET is_active=NOT is_active,updated_at=now() WHERE id=?", id) == 0)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         return group(id);
     }
 

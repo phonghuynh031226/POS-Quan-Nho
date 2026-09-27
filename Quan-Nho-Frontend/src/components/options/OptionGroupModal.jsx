@@ -34,7 +34,7 @@ export default function OptionGroupModal({
 
   // Sub-form for adding a new option
   const [newOptName, setNewOptName] = useState('')
-  const [newOptPrice, setNewOptPrice] = useState(0)
+  const [newOptPrice, setNewOptPrice] = useState('')
 
   const [formErrors, setFormErrors] = useState({})
 
@@ -43,7 +43,7 @@ export default function OptionGroupModal({
 
     setFormErrors({})
     setNewOptName('')
-    setNewOptPrice(0)
+    setNewOptPrice('')
 
     if (initialGroup && initialGroup.name) {
       setId(initialGroup.id || '')
@@ -115,7 +115,7 @@ export default function OptionGroupModal({
 
     setOptions((prev) => [...prev, newOpt])
     setNewOptName('')
-    setNewOptPrice(0)
+    setNewOptPrice('')
     setFormErrors((prev) => ({ ...prev, option: '' }))
   }
 
@@ -245,7 +245,7 @@ export default function OptionGroupModal({
                     }`}
                   >
                     <Circle className="w-3 h-3" />
-                    <span>Chọn một (SINGLE)</span>
+                    <span>Chọn một</span>
                   </button>
 
                   <button
@@ -258,7 +258,7 @@ export default function OptionGroupModal({
                     }`}
                   >
                     <CheckCircle2 className="w-3 h-3" />
-                    <span>Chọn nhiều (MULTIPLE)</span>
+                    <span>Chọn nhiều</span>
                   </button>
                 </div>
               </div>
@@ -271,7 +271,7 @@ export default function OptionGroupModal({
                     onChange={(e) => setRequired(e.target.checked)}
                     className="w-3.5 h-3.5 rounded text-[#C88A35] accent-[#C88A35]"
                   />
-                  <span>Bắt buộc chọn (Required)</span>
+                  <span>Bắt buộc chọn</span>
                 </label>
 
                 <div
@@ -333,9 +333,15 @@ export default function OptionGroupModal({
               <div className="relative shrink-0">
                 <input
                   type="number"
+                  min="0"
                   step="1000"
                   value={newOptPrice}
-                  onChange={(e) => setNewOptPrice(Number(e.target.value))}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const cleaned = val === '' ? '' : val.replace(/^0+(?=\d)/, '')
+                    setNewOptPrice(cleaned)
+                  }}
+                  onFocus={(e) => e.target.select()}
                   placeholder="0"
                   className="w-20 text-xs py-1.5 pl-2 pr-5 rounded-lg border border-[#D4C7B8] bg-white text-[#2D1B14] text-right font-bold focus:outline-none focus:ring-1 focus:ring-[#C88A35]"
                   onKeyDown={(e) => {
@@ -397,12 +403,22 @@ export default function OptionGroupModal({
                       <span className="text-[11px] text-stone-400">+</span>
                       <input
                         type="number"
+                        min="0"
                         step="1000"
-                        value={opt.extraPrice}
-                        onChange={(e) =>
-                          handleUpdateOption(idx, 'extraPrice', Number(e.target.value) || 0)
-                        }
-                        className="w-18 text-xs py-1 px-1.5 rounded-md border border-[#D4C7B8] bg-white text-[#2D1B14] text-right font-bold"
+                        value={opt.extraPrice === 0 && opt.extraPrice !== '' ? '' : opt.extraPrice}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          const cleaned = val === '' ? '' : val.replace(/^0+(?=\d)/, '')
+                          handleUpdateOption(idx, 'extraPrice', cleaned)
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={() => {
+                          if (opt.extraPrice === '') {
+                            handleUpdateOption(idx, 'extraPrice', 0)
+                          }
+                        }}
+                        placeholder="0"
+                        className="w-18 text-xs py-1 px-1.5 rounded-md border border-[#D4C7B8] bg-white text-[#2D1B14] text-right font-bold focus:outline-none focus:ring-1 focus:ring-[#C88A35]"
                       />
                       <span className="text-[11px] text-stone-500">₫</span>
                     </div>

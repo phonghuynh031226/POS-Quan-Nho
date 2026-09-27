@@ -67,9 +67,14 @@
     visibility: visible !important;
   }
 
-  .page-break {
-    page-break-after: always;
-    break-after: page;
+  .page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .print-line-item {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   @page {

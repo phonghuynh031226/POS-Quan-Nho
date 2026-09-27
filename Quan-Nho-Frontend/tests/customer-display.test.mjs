@@ -62,10 +62,9 @@ test('PosPage and PaymentModal broadcast realtime sync updates to Customer Displ
   const posCode = await readFile(posPagePath, 'utf8')
   const paymentCode = await readFile(paymentModalPath, 'utf8')
 
-  // PosPage sends ordering updates & has launcher button
+  // PosPage sends ordering updates; the customer display is opened separately.
   assert.match(posCode, /sendDisplayState/)
-  assert.match(posCode, /Màn hình khách/)
-  assert.match(posCode, /window\.open\('\/display'/)
+  assert.match(posCode, /DISPLAY_STATES\.ORDERING/)
 
   // PaymentModal sends payment & success updates
   assert.match(paymentCode, /sendDisplayState/)

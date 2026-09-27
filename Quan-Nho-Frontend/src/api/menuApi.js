@@ -6,6 +6,13 @@ export const menuApi = {
   async getMenu() { return body(await apiClient.get('/menu')) },
   async getCategories() { return body(await apiClient.get('/categories')) },
   async getToppings() { return body(await apiClient.get('/toppings')) },
+  async uploadImage(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return body(await apiClient.post('/uploads/images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }))
+  },
   async saveItem(item) {
     return body(item.id
       ? await apiClient.put(`/menu/${item.id}`, item)

@@ -84,17 +84,33 @@ export default function OptionGroupsPage() {
   }
 
   const handleToggleActive = async (group) => {
+    const isCurrentlyActive = group.isActive !== false && group.is_active !== false
+    const nextActive = !isCurrentlyActive
+
+    // Cập nhật giao diện ngay lập tức (Optimistic UI)
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === group.id ? { ...g, isActive: nextActive, is_active: nextActive } : g
+      )
+    )
+
     try {
-      await optionGroupApi.saveOptionGroup({
-        ...group,
-        isActive: !group.isActive,
-      })
+      if (optionGroupApi.toggleActive) {
+        await optionGroupApi.toggleActive(group.id)
+      } else {
+        await optionGroupApi.saveOptionGroup({
+          ...group,
+          isActive: nextActive,
+          is_active: nextActive,
+        })
+      }
       await loadGroups()
       toast.success(
-        group.isActive ? 'Đã tắt nhóm tùy chọn!' : 'Đã kích hoạt nhóm tùy chọn!'
+        nextActive ? 'Đã bật nhóm tùy chọn!' : 'Đã tắt nhóm tùy chọn!'
       )
     } catch (err) {
-      toast.error('Lỗi: ' + err.message)
+      await loadGroups()
+      toast.error('Lỗi cập nhật trạng thái: ' + err.message)
     }
   }
 
@@ -154,7 +170,7 @@ export default function OptionGroupsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm theo tên nhóm hoặc mã (SIZE, ICE...)..."
+            placeholder="Tìm kiếm nhóm tùy chọn..."
             className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-stone-50 border border-[#D4C7B8] rounded-xl text-[#2D1B14] focus:outline-none focus:ring-2 focus:ring-[#C88A35]"
           />
         </div>
@@ -182,7 +198,7 @@ export default function OptionGroupsPage() {
             }`}
           >
             <Circle className="w-3 h-3" />
-            <span>Chọn một (SINGLE)</span>
+            <span>Chọn một</span>
           </button>
           <button
             type="button"
@@ -194,7 +210,7 @@ export default function OptionGroupsPage() {
             }`}
           >
             <CheckCircle2 className="w-3 h-3" />
-            <span>Chọn nhiều (MULTIPLE)</span>
+            <span>Chọn nhiều</span>
           </button>
         </div>
       </div>
@@ -211,14 +227,15 @@ export default function OptionGroupsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredGroups.map((group) => {
             const isSingle = group.selectionType === 'SINGLE'
-            const activeOptions = (group.options || []).filter((o) => o.isActive !== false)
+            const isGroupActive = group.isActive !== false && group.is_active !== false
+            const activeOptions = (group.options || []).filter((o) => o.isActive !== false && o.is_active !== false)
 
             return (
               <div
                 key={group.id}
                 onClick={() => handleOpenEditModal(group)}
                 className={`bg-white rounded-2xl border transition shadow-xs flex flex-col justify-between overflow-hidden cursor-pointer hover:shadow-md ${
-                  group.isActive !== false
+                  isGroupActive
                     ? 'border-[#E8DFD5] hover:border-[#C88A35]'
                     : 'border-stone-200 opacity-60 bg-stone-50'
                 }`}
@@ -231,11 +248,6 @@ export default function OptionGroupsPage() {
                         <h3 className="font-extrabold text-sm sm:text-base text-[#2D1B14]">
                           {group.name}
                         </h3>
-                        {group.code && (
-                          <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 border border-stone-300">
-                            {group.code}
-                          </span>
-                        )}
                       </div>
 
                       <div className="flex items-center gap-2 text-xs">
@@ -249,7 +261,7 @@ export default function OptionGroupsPage() {
                           {isSingle ? (
                             <>
                               <Circle className="w-2.5 h-2.5" />
-                              <span>Chọn 1 (SINGLE)</span>
+                              <span>Chọn 1</span>
                             </>
                           ) : (
                             <>
@@ -274,17 +286,17 @@ export default function OptionGroupsPage() {
                         e.stopPropagation()
                         handleToggleActive(group)
                       }}
-                      title={group.isActive !== false ? 'Đang bật' : 'Đã tắt'}
+                      title={isGroupActive ? 'Đang bật (bấm để tắt)' : 'Đã tắt (bấm để bật)'}
                       className={`p-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                        group.isActive !== false
+                        isGroupActive
                           ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
                           : 'bg-stone-200 text-stone-600 hover:bg-stone-300'
                       }`}
                     >
-                      {group.isActive !== false ? (
+                      {isGroupActive ? (
                         <Check className="w-4 h-4" />
                       ) : (
-                        <Ban className="w-4 h-4" />
+                        <Ban className="w-4 h-4 text-stone-500" />
                       )}
                     </button>
                   </div>
@@ -330,11 +342,7 @@ export default function OptionGroupsPage() {
                 </div>
 
                 {/* Footer actions */}
-                <div className="px-5 py-3 bg-[#FDFBF7] border-t border-[#E8DFD5] flex items-center justify-between">
-                  <span className="text-[11px] text-stone-500">
-                    Thứ tự: <strong>#{group.displayOrder || 1}</strong>
-                  </span>
-
+                <div className="px-5 py-3 bg-[#FDFBF7] border-t border-[#E8DFD5] flex items-center justify-end">
                   <div className="flex items-center gap-2">
                     <Button
                       variant="secondary"

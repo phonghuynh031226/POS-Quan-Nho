@@ -17,10 +17,12 @@ import {
 import { menuApi } from '../../api/menuApi'
 import { optionGroupApi } from '../../api/optionGroupApi'
 import { formatCurrency } from '../../utils/formatters'
+import { persistMenuItem } from '../../utils/menuItemPersistence'
 import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import EmptyState from '../../components/common/EmptyState'
+import ProductImage from '../../components/common/ProductImage'
 import MenuItemModal from '../../components/menu/MenuItemModal'
 import CategoryManagementModal from '../../components/menu/CategoryManagementModal'
 import ToppingManagementModal from '../../components/menu/ToppingManagementModal'
@@ -101,11 +103,11 @@ export default function MenuManagementPage() {
   const handleSaveItem = async (itemData, optionGroupRelations = []) => {
     setIsSubmitting(true)
     try {
-      const targetId = itemData.id || ('m_' + Date.now())
-      const itemToSave = { ...itemData, id: targetId }
-      const updated = await menuApi.saveItem(itemToSave)
-      await optionGroupApi.saveProductOptionGroups(targetId, optionGroupRelations)
-      setMenu(updated)
+      await persistMenuItem(itemData, optionGroupRelations, {
+        saveItem: (item) => menuApi.saveItem(item),
+        saveRelations: (productId, relations) =>
+          optionGroupApi.saveProductOptionGroups(productId, relations),
+      })
       await loadData()
       toast.success(itemData.id ? 'Cập nhật món thành công!' : 'Đã thêm món mới vào thực đơn!')
       setIsModalOpen(false)
@@ -239,8 +241,16 @@ export default function MenuManagementPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredItems.map((item) => {
-            const currentCategory = categories.find((c) => c.id === item.category)
-            const isFood = item.category === 'SNACKS' || currentCategory?.type === 'FOOD'
+            const currentCategory = categories.find(
+              (c) =>
+                String(c.id) === String(item.category_id) ||
+                c.code === item.category ||
+                String(c.id) === String(item.category)
+            )
+            const isFood =
+              item.category === 'SNACKS' ||
+              currentCategory?.code === 'SNACKS' ||
+              currentCategory?.type === 'FOOD'
             const itemRelations = productRelations.filter((r) => r.productId === item.id)
             const itemGroupNames = itemRelations
               .map((r) => optionGroups.find((g) => g.id === r.optionGroupId)?.name)
@@ -258,25 +268,11 @@ export default function MenuManagementPage() {
               >
                 {/* Image & Badges */}
                 <div className="relative h-44 w-full bg-[#F5EFEB] overflow-hidden flex items-center justify-center">
-                  {item.image ? (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-stone-400 select-none p-4 text-center">
-                      {isFood ? (
-                        <Utensils className="w-10 h-10 text-stone-300 mb-1" />
-                      ) : (
-                        <Coffee className="w-10 h-10 text-stone-300 mb-1" />
-                      )}
-                      <span className="text-[11px] font-medium text-stone-400">Chưa có ảnh</span>
-                    </div>
-                  )}
+                  <ProductImage
+                    src={item.image}
+                    alt={item.name}
+                    imageClassName="w-full h-full object-cover transition duration-300 group-hover:scale-105"
+                  />
 
                   {/* Category badge */}
                   <div className="absolute top-2.5 left-2.5">
@@ -286,7 +282,7 @@ export default function MenuManagementPage() {
                       ) : (
                         <Coffee className="w-3 h-3 text-[#C88A35]" />
                       )}
-                      <span>{currentCategory?.name || item.category}</span>
+                      <span>{currentCategory?.name || item.category_name || item.categoryName || item.category}</span>
                     </span>
                   </div>
 

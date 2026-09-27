@@ -131,9 +131,15 @@ export default function ToppingManagementModal({
 
             <input
               type="number"
+              min="0"
               step="1000"
               value={newTopPrice}
-              onChange={(e) => setNewTopPrice(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value
+                const cleaned = val === '' ? '' : val.replace(/^0+(?=\d)/, '')
+                setNewTopPrice(cleaned)
+              }}
+              onFocus={(e) => e.target.select()}
               placeholder="Giá (₫)"
               className="w-24 text-xs sm:text-sm py-2.5 px-3 rounded-xl border border-[#D4C7B8] bg-white text-[#2D1B14] focus:outline-none focus:ring-2 focus:ring-[#C88A35]"
             />
@@ -180,9 +186,15 @@ export default function ToppingManagementModal({
                       />
                       <input
                         type="number"
+                        min="0"
                         step="1000"
                         value={editingTopPrice}
-                        onChange={(e) => setEditingTopPrice(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          const cleaned = val === '' ? '' : val.replace(/^0+(?=\d)/, '')
+                          setEditingTopPrice(cleaned)
+                        }}
+                        onFocus={(e) => e.target.select()}
                         className="w-20 text-xs py-1.5 px-2 rounded-lg border border-[#C88A35] bg-white text-[#2D1B14] focus:outline-none"
                       />
                       <button

@@ -14,9 +14,27 @@ test('active frontend APIs use HTTP instead of mockDb', async () => {
   }
 })
 
+test('menu image upload uses the backend API instead of storing base64 data', async () => {
+  const [menuApiCode, modalCode] = await Promise.all([
+    readFile(new URL('../src/api/menuApi.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/components/menu/MenuItemModal.jsx', import.meta.url), 'utf8'),
+  ])
+
+  assert.match(menuApiCode, /uploadImage/)
+  assert.match(menuApiCode, /\/uploads\/images/)
+  assert.match(modalCode, /menuApi\.uploadImage/)
+  assert.doesNotMatch(modalCode, /readAsDataURL/)
+  assert.doesNotMatch(modalCode, /new FileReader/)
+})
+
 test('payment cannot fabricate a successful bank transfer', async () => {
   const code = await readFile(new URL('../src/components/pos/PaymentModal.jsx', import.meta.url), 'utf8')
   assert.match(code, /paymentMethod !== 'TIEN_MAT'/)
   assert.doesNotMatch(code, /setTransferPaid\(true\)/)
   assert.doesNotMatch(code, /const mockTx/)
+})
+
+test('Axios does not overwrite the masked Spring CSRF header with the raw cookie token', async () => {
+  const code = await readFile(new URL('../src/api/apiClient.js', import.meta.url), 'utf8')
+  assert.match(code, /xsrfCookieName:\s*null/)
 })

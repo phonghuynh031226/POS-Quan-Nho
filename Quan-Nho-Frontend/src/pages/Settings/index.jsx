@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Store,
   CreditCard,
@@ -16,11 +16,13 @@ import {
   Eye,
   EyeOff,
   ShieldCheck,
+  Printer,
 } from 'lucide-react'
 import Button from '../../components/common/Button'
 import Input from '../../components/common/Input'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import Modal from '../../components/common/Modal'
+import ReceiptModal from '../../components/print/ReceiptModal'
 import { settingsApi } from '../../api/settingsApi'
 import { useToast } from '../../context/ToastContext'
 
@@ -34,6 +36,49 @@ export default function SettingsPage() {
   const [showApiKey, setShowApiKey] = useState(false)
   const [savingSepay, setSavingSepay] = useState(false)
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
+  const [isTestPrintOpen, setIsTestPrintOpen] = useState(false)
+
+  const sampleOrder = useMemo(() => ({
+    id: 99999,
+    orderNumber: 'QN-DEMO01',
+    order_code: 'QN-DEMO01',
+    createdAt: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    createdBy: 'Chủ quán (In thử)',
+    paymentMethod: 'TIEN_MAT',
+    payment_method: 'CASH',
+    paymentStatus: 'DA_THANH_TOAN',
+    payment_status: 'PAID',
+    totalAmount: 64000,
+    total_amount: 64000,
+    cashGiven: 100000,
+    cash_received: 100000,
+    changeReturned: 36000,
+    change_amount: 36000,
+    items: [
+      {
+        id: 1,
+        name: 'Cà phê sữa đá truyền thống',
+        quantity: 1,
+        price: 35000,
+        total_price: 35000,
+        order_item_options: [
+          { group_name: 'Size', option_name: 'Size L', extra_price: 6000 },
+          { group_name: 'Đá', option_name: 'Ít đá', extra_price: 0 },
+        ],
+      },
+      {
+        id: 2,
+        name: 'Bạc xỉu kem sữa 3 tầng',
+        quantity: 1,
+        price: 29000,
+        total_price: 29000,
+        order_item_options: [
+          { group_name: 'Đường', option_name: 'Bình thường', extra_price: 0 },
+        ],
+      },
+    ],
+  }), [])
 
   const toast = useToast()
 
@@ -137,8 +182,8 @@ export default function SettingsPage() {
   }
 
   const tabs = [
-    { id: 'store', label: 'Thông tin in bill (shop_settings)', icon: Store },
-    { id: 'payment', label: 'Cổng SePay (sepay_settings)', icon: CreditCard },
+    { id: 'store', label: 'Thông tin in bill', icon: Store },
+    { id: 'payment', label: 'Cổng SePay', icon: CreditCard },
   ]
 
   return (
@@ -156,11 +201,21 @@ export default function SettingsPage() {
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-stone-500 mt-1">
-              Khớp chuẩn 11 bảng database: Thông tin in bill (shop_settings) & Cổng SePay (sepay_settings)
+              Cấu hình thông tin in bill và cổng thanh toán SePay cho quán
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              icon={Printer}
+              onClick={() => setIsTestPrintOpen(true)}
+              className="text-xs font-bold text-[#C88A35] border-[#C88A35] hover:bg-[#FAF7F2]"
+            >
+              In thử mẫu bill
+            </Button>
+
             <Button
               type="button"
               variant="outline"
@@ -210,25 +265,32 @@ export default function SettingsPage() {
         {/* Tab Content Box */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E8DFD5] shadow-sm space-y-6">
           {/* ========================================================================= */}
-          {/* TAB 1: THÔNG TIN IN BILL (shop_settings) */}
+          {/* TAB 1: THÔNG TIN IN BILL */}
           {/* ========================================================================= */}
           {activeTab === 'store' && (
             <div className="space-y-6 animate-in fade-in duration-200">
-              <div className="border-b border-[#F5EFEB] pb-4 flex items-center justify-between">
+              <div className="border-b border-[#F5EFEB] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-black text-[#2D1B14]">Thông Tin In Hóa Đơn (shop_settings)</h2>
+                  <h2 className="text-lg font-black text-[#2D1B14]">Thông Tin In Hóa Đơn</h2>
                   <p className="text-xs text-stone-500 mt-0.5">
-                    Bảng database <code className="bg-stone-100 px-1.5 py-0.5 rounded font-mono text-stone-700">shop_settings</code> chỉ phục vụ thông tin in bill cho khách hàng
+                    Thông tin cửa hàng hiển thị và in trên phiếu thanh toán cho khách hàng
                   </p>
                 </div>
-                <span className="text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-lg">
-                  shop_settings
-                </span>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  icon={Printer}
+                  onClick={() => setIsTestPrintOpen(true)}
+                  className="text-xs font-bold text-[#C88A35] border-[#C88A35] hover:bg-[#FAF7F2] shrink-0"
+                >
+                  In thử mẫu bill
+                </Button>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <Input
-                  label="Tên quán (shop_name)"
+                  label="Tên quán"
                   icon={Store}
                   value={settings.storeName || ''}
                   onChange={(e) => handleFieldChange('storeName', e.target.value)}
@@ -256,7 +318,7 @@ export default function SettingsPage() {
 
                 <div className="sm:col-span-2">
                   <Input
-                    label="Địa chỉ quán (shop_address)"
+                    label="Địa chỉ quán"
                     icon={MapPin}
                     value={settings.address || ''}
                     onChange={(e) => handleFieldChange('address', e.target.value)}
@@ -267,7 +329,7 @@ export default function SettingsPage() {
                 </div>
 
                 <Input
-                  label="Tên Wi-Fi (wifi_name)"
+                  label="Tên Wi-Fi"
                   icon={Wifi}
                   value={settings.wifiName || ''}
                   onChange={(e) => handleFieldChange('wifiName', e.target.value)}
@@ -276,7 +338,7 @@ export default function SettingsPage() {
                 />
 
                 <Input
-                  label="Mật khẩu Wi-Fi (wifi_password_encrypted)"
+                  label="Mật khẩu Wi-Fi"
                   value={settings.wifiPass || ''}
                   onChange={(e) => handleFieldChange('wifiPass', e.target.value)}
                   placeholder="quannho888"
@@ -293,7 +355,7 @@ export default function SettingsPage() {
                     />
                     <div>
                       <span className="font-bold text-xs sm:text-sm text-[#2D1B14] block">
-                        In thông tin Wi-Fi lên hóa đơn (show_wifi_on_receipt)
+                        In thông tin Wi-Fi lên hóa đơn
                       </span>
                       <span className="text-xs text-stone-500">
                         Hiển thị tên Wi-Fi và mật khẩu ở phần chân phiếu thanh toán
@@ -304,7 +366,7 @@ export default function SettingsPage() {
 
                 <div className="sm:col-span-2">
                   <Input
-                    label="Câu chúc / Cảm ơn chân hóa đơn (receipt_message)"
+                    label="Câu chúc / Cảm ơn chân hóa đơn"
                     icon={FileText}
                     value={settings.receiptFooterMessage || ''}
                     onChange={(e) => handleFieldChange('receiptFooterMessage', e.target.value)}
@@ -323,14 +385,11 @@ export default function SettingsPage() {
             <div className="space-y-6 animate-in fade-in duration-200">
               <div className="border-b border-[#F5EFEB] pb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-black text-[#2D1B14]">Cấu Hình Cổng SePay (sepay_settings)</h2>
+                  <h2 className="text-lg font-black text-[#2D1B14]">Cấu Hình Cổng SePay</h2>
                   <p className="text-xs text-stone-500 mt-0.5">
                     Tích hợp tự động nhận diện thanh toán SePay thông qua webhook
                   </p>
                 </div>
-                <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-lg">
-                  sepay_settings
-                </span>
               </div>
 
               {/* SEPAY API KEY SECTION (Theo đúng đặc tả: chỉ có ô dán API Key) */}
@@ -339,7 +398,7 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-emerald-600" />
                     <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">
-                      Cấu hình SePay API Key (sepay_settings)
+                      Cấu hình SePay API Key
                     </h3>
                   </div>
 
@@ -434,6 +493,15 @@ export default function SettingsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Modal In Thử Mẫu Hóa Đơn */}
+      <ReceiptModal
+        isOpen={isTestPrintOpen}
+        onClose={() => setIsTestPrintOpen(false)}
+        order={sampleOrder}
+        initialPrintType="both"
+        customSettings={settings}
+      />
     </div>
   )
 }

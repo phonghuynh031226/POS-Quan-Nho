@@ -46,7 +46,7 @@ public class SecurityConfig {
         http.securityContext(context -> context.securityContextRepository(repository));
         http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/csrf").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/csrf", "/api/auth/me").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll());
         http.exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, error) ->

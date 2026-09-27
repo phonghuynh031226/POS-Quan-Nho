@@ -9,6 +9,9 @@ export const optionGroupApi = {
       ? await apiClient.put(`/options/${group.id}`, group)
       : await apiClient.post('/options', group))
   },
+  async toggleActive(id) {
+    return body(await apiClient.patch(`/options/${id}/availability`))
+  },
   async deleteOptionGroup(id) { await apiClient.delete(`/options/${id}`); return true },
   async getProductOptionGroups(productId) {
     return body(await apiClient.get(productId ? `/products/${productId}/option-groups` : '/product-option-groups'))

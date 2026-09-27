@@ -37,6 +37,14 @@ test('settingsApi provides full get, update, and reset operations', async () => 
   assert.doesNotMatch(code, /mockDb/)
 })
 
+test('settingsApi returns the saved SePay configuration instead of throwing a placeholder error', async () => {
+  const code = await readFile(settingsApiPath, 'utf8')
+
+  assert.match(code, /const \{ data \} = await apiClient\.post\('\/settings\/sepay\/key', \{ apiKey \}\)/)
+  assert.match(code, /return data/)
+  assert.doesNotMatch(code, /SePay chưa được kết nối/)
+})
+
 test('Admin navigation and routing includes /settings page', async () => {
   const [navbarCode, routesCode] = await Promise.all([
     readFile(navbarPath, 'utf8'),

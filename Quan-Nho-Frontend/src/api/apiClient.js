@@ -9,6 +9,9 @@ const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10000,
   withCredentials: true,
+  // Spring returns a masked token from /auth/csrf. Prevent Axios from
+  // replacing that header later with the raw XSRF-TOKEN cookie value.
+  xsrfCookieName: null,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

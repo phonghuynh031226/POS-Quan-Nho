@@ -2,6 +2,7 @@ package com.quannho.pos.settings.shop;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -10,7 +11,12 @@ import java.util.Map;
 @RestController @RequestMapping("/api/settings")
 public class ShopSettingsController {
     private final JdbcTemplate jdbc;
-    public ShopSettingsController(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final PasswordEncoder passwordEncoder;
+
+    public ShopSettingsController(JdbcTemplate jdbc, PasswordEncoder passwordEncoder) {
+        this.jdbc = jdbc;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @GetMapping("/shop") public Map<String, Object> shop() {
         return jdbc.queryForList("SELECT id,shop_name,store_subtitle,phone,shop_address,wifi_name," +
@@ -35,8 +41,26 @@ public class ShopSettingsController {
                 .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
-    @PostMapping("/sepay/key") public Map<String, Object> saveSepayKey() {
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED,
-                "SePay webhook chưa được triển khai; không lưu API key giả");
+    @PostMapping("/sepay/key") public Map<String, Object> saveSepayKey(@RequestBody Map<String, Object> body) {
+        String apiKey = String.valueOf(body.getOrDefault("apiKey", "")).trim();
+        if (apiKey.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "SePay API Key không được để trống");
+        }
+        if (apiKey.length() < 4 || apiKey.length() > 2048) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "SePay API Key không hợp lệ");
+        }
+
+        String last4 = apiKey.substring(Math.max(0, apiKey.length() - 4));
+        String hashedKey = passwordEncoder.encode(apiKey);
+        jdbc.update("UPDATE sepay_settings SET api_key_encrypted=?,api_key_last4=?," +
+                        "is_configured=true,updated_at=now() " +
+                        "WHERE id=(SELECT id FROM sepay_settings ORDER BY id LIMIT 1)",
+                hashedKey, last4);
+
+        return Map.of(
+                "api_key_last4", last4,
+                "is_configured", true,
+                "masked_key", "••••••••" + last4
+        );
     }
 }

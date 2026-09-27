@@ -112,6 +112,10 @@ export default function OrderHistoryPage() {
       (sum, o) => sum + (Number(o.refundAmount || o.totalAmount) || 0),
       0
     )
+    const totalLoss = cancelledOrders.reduce(
+      (sum, o) => sum + (Number(o.lossAmount) || 0),
+      0
+    )
 
     // Counts per status
     const counts = {
@@ -130,6 +134,7 @@ export default function OrderHistoryPage() {
       completedCount,
       cancelledCount,
       totalRefund,
+      totalLoss,
       counts,
     }
   }, [allOrders])
@@ -296,8 +301,11 @@ export default function OrderHistoryPage() {
               {stats.cancelledCount}{' '}
               <span className="text-xs font-normal text-stone-500">đơn</span>
             </div>
-            <span className="text-[10px] text-rose-500 truncate block font-medium">
-              Hoàn: {formatCurrency(stats.totalRefund)}
+            <span className="text-[10px] text-rose-600 truncate block font-bold">
+              Lỗ: {formatCurrency(stats.totalLoss)}
+            </span>
+            <span className="text-[10px] text-stone-400 truncate block font-medium">
+              Hoàn khách: {formatCurrency(stats.totalRefund)}
             </span>
           </div>
         </div>

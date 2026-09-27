@@ -48,7 +48,7 @@ export const settingsApi = {
     return data
   },
   async saveSepayApiKey(apiKey) {
-    await apiClient.post('/settings/sepay/key', { apiKey })
-    throw new Error('SePay chưa được kết nối')
+    const { data } = await apiClient.post('/settings/sepay/key', { apiKey })
+    return data
   },
 }

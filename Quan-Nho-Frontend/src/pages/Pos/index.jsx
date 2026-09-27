@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Search, Plus, Ban, Utensils, Coffee } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Search, Plus, Ban, Utensils, Coffee, Menu } from 'lucide-react'
 import { menuApi } from '../../api/menuApi'
 import { formatCurrency } from '../../utils/formatters'
 import { DISPLAY_STATES, sendDisplayState } from '../../utils/customerDisplaySync'
@@ -9,6 +9,7 @@ import PaymentModal from '../../components/pos/PaymentModal'
 import ReceiptModal from '../../components/print/ReceiptModal'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import EmptyState from '../../components/common/EmptyState'
+import ProductImage from '../../components/common/ProductImage'
 import { useToast } from '../../context/ToastContext'
 
 export default function PosPage() {
@@ -17,6 +18,8 @@ export default function PosPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false)
+  const categoryMenuRef = useRef(null)
 
   // Cart state
   const [cart, setCart] = useState([])
@@ -66,6 +69,26 @@ export default function PosPage() {
 
   useEffect(() => {
     loadData()
+  }, [])
+
+  useEffect(() => {
+    const closeCategoryMenu = (event) => {
+      if (event.type === 'keydown' && event.key !== 'Escape') return
+      if (
+        event.type === 'pointerdown' &&
+        categoryMenuRef.current?.contains(event.target)
+      ) {
+        return
+      }
+      setIsCategoryMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeCategoryMenu)
+    document.addEventListener('keydown', closeCategoryMenu)
+    return () => {
+      document.removeEventListener('pointerdown', closeCategoryMenu)
+      document.removeEventListener('keydown', closeCategoryMenu)
+    }
   }, [])
 
   // Filter items
@@ -158,53 +181,92 @@ export default function PosPage() {
       <div className="flex-1 flex flex-col min-w-0 lg:min-h-0 bg-[#F8F5F0] overflow-y-auto">
         {/* Top bar: Category tabs & Search input */}
         <div className="p-4 sm:p-6 border-b border-[#E8DFD5] bg-[#FDFBF7] sticky top-0 z-10 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm món ăn, thức uống..."
-                className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-white border border-[#D4C7B8] rounded-xl text-[#2D1B14] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#C88A35]"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-600 font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Đã gỡ bỏ nút Màn hình khách: window.open('/display', 'CustomerDisplayWindow') */}
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="text-xs text-stone-500 hidden sm:block font-medium whitespace-nowrap">
-                Hiển thị: <strong>{filteredItems.length}</strong> món
-              </div>
-            </div>
-          </div>
-
-          {/* Category Filter Pills & Item Counter */}
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none flex-1">
-              {[{ id: 'ALL', name: 'Tất cả món' }, ...categories].map((cat) => (
+            <div data-search-category-row className="flex min-w-0 flex-1 items-center gap-2">
+              {/* Search Input */}
+              <div className="relative min-w-0 flex-1 max-w-md">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm kiếm món ăn, thức uống..."
+                  className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-white border border-[#D4C7B8] rounded-xl text-[#2D1B14] placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#C88A35]"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-600 font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Floating category chooser */}
+              <div ref={categoryMenuRef} className="relative shrink-0">
                 <button
-                  key={cat.id}
                   type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
-                    selectedCategory === cat.id
-                      ? 'bg-[#3E2723] text-white shadow-xs'
-                      : 'bg-white text-stone-700 border border-[#D4C7B8] hover:bg-[#F5EFEB]'
+                  aria-label="Chọn danh mục"
+                  aria-expanded={isCategoryMenuOpen}
+                  aria-controls="pos-category-overlay"
+                  onClick={() => setIsCategoryMenuOpen((open) => !open)}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-bold shadow-xs transition-all duration-200 cursor-pointer ${
+                    isCategoryMenuOpen
+                      ? 'border-[#3E2723] bg-[#3E2723] text-white'
+                      : 'border-[#D4C7B8] bg-white text-[#3E2723] hover:bg-[#F5EFEB]'
                   }`}
                 >
-                  <span>{cat.name}</span>
+                  <Menu
+                    className={`h-5 w-5 transition-transform duration-200 ${
+                      isCategoryMenuOpen ? 'rotate-90' : 'rotate-0'
+                    }`}
+                  />
+                  <span className="hidden xs:inline sm:inline">Danh mục</span>
                 </button>
-              ))}
+
+                <div
+                  id="pos-category-overlay"
+                  data-category-overlay
+                  aria-hidden={!isCategoryMenuOpen}
+                  className={`absolute right-0 top-full z-30 mt-2 w-[min(32rem,calc(100vw-3rem))] origin-top-right rounded-2xl border border-[#D4C7B8] bg-white p-3 shadow-2xl transition-all duration-200 ease-out ${
+                    isCategoryMenuOpen
+                      ? 'pointer-events-auto opacity-100 scale-100 translate-y-0'
+                      : 'pointer-events-none opacity-0 scale-95 -translate-y-2'
+                  }`}
+                >
+                  <div className="mb-2 px-1 text-xs font-extrabold uppercase tracking-wide text-[#7A4A32]">
+                    Chọn danh mục
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {[{ id: 'ALL', name: 'Tất cả món' }, ...categories].map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        tabIndex={isCategoryMenuOpen ? 0 : -1}
+                        onClick={() => {
+                          setSelectedCategory(cat.id)
+                          setIsCategoryMenuOpen(false)
+                        }}
+                        className={`min-h-11 rounded-xl border px-3 py-2 text-left text-xs sm:text-sm font-bold transition-all duration-150 cursor-pointer ${
+                          selectedCategory === cat.id
+                            ? 'border-[#3E2723] bg-[#3E2723] text-white shadow-sm'
+                            : 'border-[#E2D8CD] bg-[#FDFBF7] text-stone-700 hover:-translate-y-0.5 hover:border-[#C88A35] hover:bg-[#F5EFEB]'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden shrink-0 items-center gap-2 sm:flex">
+              <div className="text-xs text-stone-500 font-medium whitespace-nowrap">
+                Hiển thị: <strong>{filteredItems.length}</strong> món
+              </div>
             </div>
           </div>
         </div>
@@ -221,9 +283,15 @@ export default function PosPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {filteredItems.map((item) => {
-                const currentCategory = categories.find((c) => c.id === item.category)
+                const currentCategory = categories.find(
+                  (c) =>
+                    String(c.id) === String(item.category_id) ||
+                    c.code === item.category ||
+                    String(c.id) === String(item.category)
+                )
                 const isFood =
                   item.category === 'SNACKS' ||
+                  currentCategory?.code === 'SNACKS' ||
                   currentCategory?.type === 'FOOD' ||
                   item.optionsConfig?.spiceLevels?.length
 
@@ -239,28 +307,13 @@ export default function PosPage() {
                   >
                     {/* Item Image with Out-of-Stock Overlay */}
                     <div className="relative aspect-4/3 overflow-hidden bg-[#F5EFEB] flex items-center justify-center">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className={`w-full h-full object-cover transition duration-300 ${
-                            item.isAvailable ? 'group-hover:scale-105' : 'grayscale'
-                          }`}
-                          onError={(e) => {
-                            e.target.style.display = 'none'
-                          }}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 select-none p-2 text-center">
-                          {isFood ? (
-                            <Utensils className="w-8 h-8 text-stone-300 mb-1" />
-                          ) : (
-                            <Coffee className="w-8 h-8 text-stone-300 mb-1" />
-                          )}
-                          <span className="text-[11px] font-medium text-stone-400">Chưa có ảnh</span>
-                        </div>
-                      )}
+                      <ProductImage
+                        src={item.image}
+                        alt={item.name}
+                        imageClassName={`w-full h-full object-cover transition duration-300 ${
+                          item.isAvailable ? 'group-hover:scale-105' : 'grayscale'
+                        }`}
+                      />
 
                       {!item.isAvailable && (
                         <div className="absolute inset-0 bg-stone-900/60 flex items-center justify-center p-2">

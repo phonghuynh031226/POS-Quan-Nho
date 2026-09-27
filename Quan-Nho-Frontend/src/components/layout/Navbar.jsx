@@ -66,18 +66,13 @@ export default function Navbar() {
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#C88A35] flex items-center justify-center text-white shadow-sm font-black">
               <Coffee className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-sm sm:text-base tracking-tight text-[#FDFBF7] whitespace-nowrap">
-                  QUÁN NHỎ
-                </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#4A2E20] text-[#E09F3E]">
-                  POS
-                </span>
-              </div>
-              <p className="text-[10px] text-[#D4C7B8] whitespace-nowrap hidden sm:block">
-                Cà phê & Đồ ăn vặt
-              </p>
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-sm sm:text-base tracking-tight text-[#FDFBF7] whitespace-nowrap">
+                QUÁN NHỎ
+              </span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#4A2E20] text-[#E09F3E]">
+                POS
+              </span>
             </div>
           </div>
 

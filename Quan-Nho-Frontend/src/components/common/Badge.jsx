@@ -1,5 +1,5 @@
 import { Clock, Coffee, CheckCircle2, CheckCheck, XCircle } from 'lucide-react'
-import { ORDER_STATUS, PAYMENT_STATUS } from '../../constants'
+import { FULFILLMENT_STATUS, PAYMENT_STATUS } from '../../constants'
 
 const iconMap = {
   Clock,
@@ -13,7 +13,7 @@ export default function Badge({ statusKey, type = 'fulfillment', size = 'md' }) 
   let config = null
 
   if (type === 'fulfillment') {
-    config = ORDER_STATUS[statusKey]
+    config = FULFILLMENT_STATUS[statusKey]
   } else if (type === 'payment') {
     config = PAYMENT_STATUS[statusKey]
   }

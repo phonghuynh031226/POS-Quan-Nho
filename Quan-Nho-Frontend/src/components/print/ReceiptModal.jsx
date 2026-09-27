@@ -9,6 +9,7 @@ import { orderApi } from '../../api/orderApi'
 import { settingsApi } from '../../api/settingsApi'
 import { DEFAULT_STORE_SETTINGS } from '../../constants'
 import { useToast } from '../../context/ToastContext'
+import { resolveReceiptPrintSettings } from '../../utils/receiptPrintSettings'
 
 export default function ReceiptModal({
   isOpen,
@@ -17,31 +18,59 @@ export default function ReceiptModal({
   isReprint = false,
   initialPrintType, // 'customer' | 'kitchen' | 'both'
   onPrinted,
+  customSettings,
 }) {
-  const [storeSettings, setStoreSettings] = useState(DEFAULT_STORE_SETTINGS)
-  const [paperSize, setPaperSize] = useState(() => storeSettings.defaultPaperSize || '80mm')
-  const [printType, setPrintType] = useState(() => initialPrintType || storeSettings.defaultPrintMode || 'both')
+  const initialPrintSettings = resolveReceiptPrintSettings({
+    savedSettings: DEFAULT_STORE_SETTINGS,
+    customSettings,
+    initialPrintType,
+  })
+  const [storeSettings, setStoreSettings] = useState(initialPrintSettings.settings)
+  const [paperSize, setPaperSize] = useState(initialPrintSettings.paperSize)
+  const [printType, setPrintType] = useState(initialPrintSettings.printType)
   const toast = useToast()
 
   // Sync print type whenever modal opens or initialPrintType changes
   useEffect(() => {
-    if (isOpen) {
-      settingsApi.getSettings().then(setStoreSettings).catch(() => {})
-      setPrintType(initialPrintType || storeSettings.defaultPrintMode || 'both')
-      setPaperSize(storeSettings.defaultPaperSize || '80mm')
+    if (!isOpen) return undefined
+
+    let isCurrent = true
+    const syncPrintSettings = async () => {
+      let savedSettings = DEFAULT_STORE_SETTINGS
+      try {
+        savedSettings = await settingsApi.getSettings()
+      } catch {
+        // Vẫn cho in bằng cấu hình mặc định hoặc dữ liệu đang nhập nếu API tạm thời lỗi.
+      }
+
+      if (!isCurrent) return
+      const resolved = resolveReceiptPrintSettings({
+        savedSettings,
+        customSettings,
+        initialPrintType,
+      })
+      setStoreSettings(resolved.settings)
+      setPaperSize(resolved.paperSize)
+      setPrintType(resolved.printType)
     }
-  }, [isOpen, initialPrintType])
+
+    syncPrintSettings()
+    return () => {
+      isCurrent = false
+    }
+  }, [isOpen, initialPrintType, customSettings])
 
   if (!order) return null
 
   const handlePrint = async () => {
     try {
-      if (isReprint) {
-        await orderApi.markReprint(order.id)
+      if (isReprint && order.id && order.id !== 99999) {
+        await orderApi.markReprint(order.id).catch(() => {})
       }
       toast.info('Đang mở hộp thoại in...')
       window.print()
       onPrinted?.()
+      onClose()
     } catch (e) {
       toast.error('Lỗi khi in: ' + e.message)
     }
@@ -154,7 +183,7 @@ export default function ReceiptModal({
           const notes = item.notes || item.customer_note || ''
 
           return (
-            <div key={item.lineId || item.id || idx} className="space-y-0.5">
+            <div key={item.lineId || item.id || idx} className="space-y-0.5 print-line-item">
               <div className="flex justify-between items-start font-semibold">
                 <span className="flex-1 pr-2">
                   {qty}x {name}
@@ -243,7 +272,7 @@ export default function ReceiptModal({
           const notes = item.note || item.notes
 
           return (
-            <div key={idx} className="space-y-1">
+            <div key={idx} className="space-y-1 print-line-item">
               <div className="flex justify-between items-start">
                 <span className="font-extrabold text-sm text-black flex-1 pr-2">
                   {item.name || item.product_name}
@@ -288,18 +317,17 @@ export default function ReceiptModal({
       {printType === 'customer' && renderCustomerReceipt()}
       {printType === 'kitchen' && renderKitchenTicket()}
       {printType === 'both' && (
-        <div className="space-y-6">
-          {/* Liên 1: Phiếu cho Bếp làm món */}
-          {renderKitchenTicket()}
-
-          {/* Đường cắt giấy giữa 2 liên */}
-          <div className="py-3 border-y-2 border-dashed border-stone-800 text-center text-[10px] text-stone-600 font-mono font-bold tracking-widest my-4 bg-white page-break">
-            ✂ - - - - CẮT GIẤY TẠI ĐÂY / TEAR HERE - - - - ✂
+        <>
+          {/* Trang đầu: Hóa đơn thanh toán cho khách hàng */}
+          <div className="print-receipt-section print-customer-receipt">
+            {renderCustomerReceipt()}
           </div>
 
-          {/* Liên 2: Hóa đơn cho Khách hàng */}
-          {renderCustomerReceipt()}
-        </div>
+          {/* Trang kế tiếp còn trống: Phiếu chế biến cho Bếp / Bar */}
+          <div className="print-receipt-section print-kitchen-ticket page-break-before">
+            {renderKitchenTicket()}
+          </div>
+        </>
       )}
     </>
   )

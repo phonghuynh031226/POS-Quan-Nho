@@ -22,6 +22,7 @@ import Input from '../common/Input'
 import Button from '../common/Button'
 import { formatCurrency } from '../../utils/formatters'
 import { optionGroupApi } from '../../api/optionGroupApi'
+import { menuApi } from '../../api/menuApi'
 
 // Thư viện ảnh mẫu chất lượng cao cho Quán
 const PRESET_IMAGES = [
@@ -108,6 +109,8 @@ export default function MenuItemModal({
   const [category, setCategory] = useState('COFFEE')
   const [price, setPrice] = useState(30000)
   const [image, setImage] = useState('')
+  const [isImageUploading, setIsImageUploading] = useState(false)
+  const [imageUploadError, setImageUploadError] = useState('')
   const [isAvailable, setIsAvailable] = useState(true)
 
   // Product Option Groups: array of { optionGroupId, required, maxSelect, displayOrder }
@@ -130,12 +133,19 @@ export default function MenuItemModal({
     if (!isOpen) return
 
     setFormErrors({})
+    setImageUploadError('')
+    setIsImageUploading(false)
 
     if (initialItem && initialItem.name) {
       setId(initialItem.id || '')
       setCode(initialItem.code || '')
-      setName(initialItem.name || '')
-      setCategory(initialItem.category_id || initialItem.category || (categories[0]?.id || 'COFFEE'))
+      const matchedInitialCat = categories.find(
+        (c) =>
+          String(c.id) === String(initialItem.category_id) ||
+          c.code === initialItem.category ||
+          String(c.id) === String(initialItem.category)
+      )
+      setCategory(matchedInitialCat ? matchedInitialCat.id : (initialItem.category_id || initialItem.category || (categories[0]?.id || 'COFFEE')))
       setPrice(initialItem.base_price || initialItem.price || 30000)
       setImage(initialItem.image_url || initialItem.image || '')
       setIsAvailable(initialItem.is_available !== false && initialItem.isAvailable !== false)
@@ -205,24 +215,40 @@ export default function MenuItemModal({
   }
 
   // Handle image upload from file
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Kích thước ảnh nên nhỏ hơn 2MB để tối ưu tốc độ lưu trữ.')
+    setImageUploadError('')
+    if (!file.type.startsWith('image/')) {
+      setImageUploadError('Vui lòng chọn đúng định dạng ảnh.')
+      e.target.value = ''
       return
     }
-    const reader = new FileReader()
-    reader.onload = (uploadEvent) => {
-      if (uploadEvent.target?.result) {
-        setImage(uploadEvent.target.result)
-      }
+    if (file.size > 2 * 1024 * 1024) {
+      setImageUploadError('Ảnh phải nhỏ hơn hoặc bằng 2MB.')
+      e.target.value = ''
+      return
     }
-    reader.readAsDataURL(file)
+
+    try {
+      setIsImageUploading(true)
+      const uploaded = await menuApi.uploadImage(file)
+      setImage(uploaded.url)
+    } catch (error) {
+      const message = error.response?.data?.detail || error.response?.data?.message
+      setImageUploadError(message || 'Không thể tải ảnh lên. Vui lòng thử lại.')
+    } finally {
+      setIsImageUploading(false)
+      e.target.value = ''
+    }
   }
 
   const handleSubmit = (e) => {
     e?.preventDefault()
+    if (isImageUploading) {
+      setImageUploadError('Vui lòng chờ ảnh tải lên hoàn tất.')
+      return
+    }
     const errors = {}
 
     if (!name.trim()) {
@@ -238,7 +264,7 @@ export default function MenuItemModal({
     }
 
     const finalCode = (code.trim() || generateCode(name.trim())).toUpperCase()
-    const selectedCatObj = categories.find((c) => c.id === category || c.code === category)
+    const selectedCatObj = categories.find((c) => String(c.id) === String(category) || c.code === category)
     const categoryId = selectedCatObj ? Number(selectedCatObj.id) : (Number(category) || 1)
 
     const payload = {
@@ -259,7 +285,7 @@ export default function MenuItemModal({
     onSave(payload, selectedGroups)
   }
 
-  const currentCategoryObj = categories.find((c) => c.id === category || c.code === category)
+  const currentCategoryObj = categories.find((c) => String(c.id) === String(category) || c.code === category)
   const categoryName =
     currentCategoryObj?.name ||
     (category === 'COFFEE'
@@ -357,12 +383,16 @@ export default function MenuItemModal({
                   <Input
                     label="Giá bán cơ bản (VNĐ)"
                     type="number"
+                    min="0"
                     step="1000"
                     value={price}
                     onChange={(e) => {
-                      setPrice(Number(e.target.value))
+                      const val = e.target.value
+                      const cleaned = val === '' ? '' : val.replace(/^0+(?=\d)/, '')
+                      setPrice(cleaned)
                       setFormErrors({ ...formErrors, price: '' })
                     }}
+                    onFocus={(e) => e.target.select()}
                     error={formErrors.price}
                     placeholder="30000"
                     required
@@ -380,7 +410,7 @@ export default function MenuItemModal({
               </div>
 
               {/* Current Image Preview & Upload Controls */}
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-start gap-2.5">
                 <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-[#D4C7B8] bg-[#F7F3EE] shrink-0 flex items-center justify-center">
                   {image ? (
                     <>
@@ -407,8 +437,9 @@ export default function MenuItemModal({
                   )}
                 </div>
 
-                <div className="flex-1 w-full flex items-center gap-2">
-                  <div className="relative flex-1">
+                <div className="flex-1 w-full">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
                     <input
                       type="text"
                       value={image}
@@ -426,30 +457,37 @@ export default function MenuItemModal({
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
+                    </div>
+
+                    {image && (
+                      <button
+                        type="button"
+                        onClick={() => setImage('')}
+                        className="shrink-0 px-2.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold cursor-pointer border border-rose-200 flex items-center gap-1 transition"
+                        title="Không dùng ảnh cho món này"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Bỏ ảnh</span>
+                      </button>
+                    )}
+
+                    <label className={`shrink-0 px-2.5 py-2 rounded-lg bg-stone-100 text-stone-700 text-xs font-semibold border border-[#D4C7B8] flex items-center gap-1.5 transition ${isImageUploading ? 'cursor-wait opacity-60' : 'cursor-pointer hover:bg-stone-200'}`}>
+                      <Upload className="w-3.5 h-3.5 text-stone-600" />
+                      <span>{isImageUploading ? 'Đang tải...' : 'Tải ảnh'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        disabled={isImageUploading}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
-
-                  {image && (
-                    <button
-                      type="button"
-                      onClick={() => setImage('')}
-                      className="shrink-0 px-2.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold cursor-pointer border border-rose-200 flex items-center gap-1 transition"
-                      title="Không dùng ảnh cho món này"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Bỏ ảnh</span>
-                    </button>
+                  {imageUploadError && (
+                    <p className="mt-1.5 text-[11px] font-semibold text-rose-600" role="alert">
+                      {imageUploadError}
+                    </p>
                   )}
-
-                  <label className="shrink-0 px-2.5 py-2 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold cursor-pointer border border-[#D4C7B8] flex items-center gap-1.5 transition">
-                    <Upload className="w-3.5 h-3.5 text-stone-600" />
-                    <span>Tải ảnh</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
                 </div>
               </div>
             </div>
@@ -601,11 +639,6 @@ export default function MenuItemModal({
                               <span className="font-bold text-xs text-[#2D1B14] truncate">
                                 {group.name}
                               </span>
-                              {group.code && (
-                                <span className="text-[9px] uppercase font-bold px-1 rounded bg-stone-100 text-stone-600 border border-stone-300">
-                                  {group.code}
-                                </span>
-                              )}
                               <span
                                 className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${
                                   isSingle
@@ -698,14 +731,15 @@ export default function MenuItemModal({
 
         {/* Action Buttons Footer */}
         <div className="pt-3 border-t border-[#E8DFD5] flex items-center justify-end gap-2.5">
-          <Button variant="outline" size="sm" onClick={onClose} disabled={isSubmitting} className="text-xs">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isSubmitting || isImageUploading} className="text-xs">
             Hủy
           </Button>
           <Button
             type="submit"
             variant="accent"
             size="sm"
-            loading={isSubmitting}
+            loading={isSubmitting || isImageUploading}
+            disabled={isSubmitting || isImageUploading}
             icon={Save}
             className="px-5 shadow-sm text-xs font-bold"
           >

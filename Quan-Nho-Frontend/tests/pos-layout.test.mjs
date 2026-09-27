@@ -17,3 +17,17 @@ test('desktop POS keeps scrolling inside the menu while the cart stays fixed', a
   assert.match(cartSidebar, /lg:h-full/)
   assert.match(cartSidebar, /lg:overflow-hidden/)
 })
+
+test('POS categories open from one floating animated menu button', async () => {
+  const posPage = await readFile(posPagePath, 'utf8')
+
+  assert.match(posPage, /isCategoryMenuOpen/)
+  assert.match(posPage, /aria-label="Chọn danh mục"/)
+  assert.match(posPage, /aria-expanded=\{isCategoryMenuOpen\}/)
+  assert.match(posPage, /data-category-overlay/)
+  assert.match(posPage, /opacity-0 scale-95 -translate-y-2/)
+  assert.match(posPage, /opacity-100 scale-100 translate-y-0/)
+  assert.match(posPage, /setIsCategoryMenuOpen\(false\)/)
+  assert.match(posPage, /data-search-category-row/)
+  assert.match(posPage, /data-search-category-row[\s\S]*Search Input[\s\S]*aria-label="Chọn danh mục"/)
+})

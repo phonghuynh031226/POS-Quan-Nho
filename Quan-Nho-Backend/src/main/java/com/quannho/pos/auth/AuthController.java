@@ -3,6 +3,7 @@ package com.quannho.pos.auth;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -49,8 +50,11 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/me") public Map<String, Object> me(Authentication authentication) {
-        return currentUser(authentication.getName());
+    @GetMapping("/me") public ResponseEntity<Map<String, Object>> me(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(currentUser(authentication.getName()));
     }
 
     @PostMapping("/logout") public Map<String, Boolean> logout(HttpServletRequest request) {

@@ -34,6 +34,11 @@ export const orderApi = {
     return data
   },
 
+  async updateFulfillmentStatus(id, status) {
+    const { data } = await apiClient.patch(`/orders/${id}/fulfillment-status`, { status })
+    return data
+  },
+
   async markReprint(id) {
     return this.getOrderById(id)
   },

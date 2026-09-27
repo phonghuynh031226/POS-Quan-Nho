@@ -22,41 +22,38 @@ export const ORDER_STATUS = {
     description: 'Đơn đã bị hủy bỏ',
   },
 
-  // Tương thích ngược với các components cũ
-  CHO_LAM: {
-    key: 'CHO_LAM',
-    label: 'Chờ làm',
+}
+
+export const FULFILLMENT_STATUS = {
+  NEW: {
+    key: 'NEW',
+    label: 'Mới nhận',
     badgeClass: 'bg-amber-100 text-amber-900 border-amber-300',
-    iconName: 'Clock',
-    description: 'Đơn mới tạo, đang chờ quầy pha chế nhận đơn',
+    description: 'Đơn vừa được thanh toán và đang chờ bắt đầu làm',
   },
-  DANG_LAM: {
-    key: 'DANG_LAM',
-    label: 'Đang làm',
+  PREPARING: {
+    key: 'PREPARING',
+    label: 'Đang chuẩn bị',
     badgeClass: 'bg-sky-100 text-sky-900 border-sky-300',
-    iconName: 'Coffee',
-    description: 'Barista đang pha chế / chuẩn bị món',
+    description: 'Quán đang chuẩn bị món',
   },
-  SAN_SANG: {
-    key: 'SAN_SANG',
-    label: 'Sẵn sàng nhận',
-    badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold animate-pulse',
-    iconName: 'CheckCircle2',
-    description: 'Đã xong toàn bộ món! Mời khách tới quầy nhận',
+  READY_FOR_PICKUP: {
+    key: 'READY_FOR_PICKUP',
+    label: 'Chờ khách nhận',
+    badgeClass: 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold',
+    description: 'Món đã xong và đang chờ gọi khách nhận',
   },
-  DA_GIAO: {
-    key: 'DA_GIAO',
-    label: 'Đã giao',
+  COMPLETED: {
+    key: 'COMPLETED',
+    label: 'Hoàn tất',
     badgeClass: 'bg-stone-200 text-stone-700 border-stone-300',
-    iconName: 'CheckCheck',
-    description: 'Khách đã nhận món đầy đủ',
+    description: 'Khách đã nhận món',
   },
-  DA_HUY: {
-    key: 'DA_HUY',
+  CANCELLED: {
+    key: 'CANCELLED',
     label: 'Đã hủy',
     badgeClass: 'bg-rose-100 text-rose-900 border-rose-300',
-    iconName: 'XCircle',
-    description: 'Đơn đã bị hủy bỏ',
+    description: 'Đơn đã bị hủy',
   },
 }
 

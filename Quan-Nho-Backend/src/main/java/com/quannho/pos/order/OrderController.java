@@ -39,6 +39,9 @@ public class OrderController {
             case "PAID" -> "DA_THANH_TOAN"; case "REFUNDED" -> "DA_HOAN_TIEN"; default -> "CHUA_THANH_TOAN";
         });
         order.put("fulfillmentStatus", row.get("fulfillment_status"));
+        order.put("cancelledFromStatus", row.get("cancelled_from_status"));
+        order.put("cancellationLossType", row.get("cancellation_loss_type"));
+        order.put("lossAmount", row.get("loss_amount"));
         order.put("createdAt", row.get("created_at")); order.put("paidAt", row.get("paid_at"));
         order.put("updatedAt", row.get("updated_at")); order.put("createdBy", row.get("creator_name"));
         order.put("refundAmount", row.get("refund_amount")); order.put("customerNote", row.get("customer_note"));
@@ -178,10 +181,18 @@ public class OrderController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Đơn đã hoàn tất hoặc đã hủy, không thể hủy lại");
         if (refund < 0 || refund > ((Number) order.get("total_amount")).longValue())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số tiền hoàn không hợp lệ");
+        CancellationLossType lossType = fulfillment == FulfillmentStatus.NEW
+                ? CancellationLossType.NO_MATERIAL_LOSS
+                : CancellationLossType.FULL_ORDER_LOSS;
+        long lossAmount = lossType == CancellationLossType.FULL_ORDER_LOSS
+                ? ((Number) order.get("total_amount")).longValue()
+                : 0;
         int updated = jdbc.update("UPDATE orders SET status='CANCELLED',fulfillment_status='CANCELLED'," +
-                        "payment_status=?,cancel_reason=?,refund_amount=?,cancelled_at=now(),refunded_at=?,updated_at=now() " +
+                        "payment_status=?,cancel_reason=?,refund_amount=?,cancelled_from_status=?," +
+                        "cancellation_loss_type=?,loss_amount=?,cancelled_at=now(),refunded_at=?,updated_at=now() " +
                         "WHERE id=? AND fulfillment_status=? AND status<>'CANCELLED'",
                 refund > 0 ? "REFUNDED" : "PAID", reason, refund,
+                fulfillment.name(), lossType.name(), lossAmount,
                 refund > 0 ? java.time.OffsetDateTime.now() : null, id, fulfillment.name());
         if (updated == 0)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Trạng thái đơn vừa được thay đổi");

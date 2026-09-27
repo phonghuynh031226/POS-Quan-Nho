@@ -78,7 +78,40 @@ class OrderApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"))
                 .andExpect(jsonPath("$.fulfillmentStatus").value("CANCELLED"))
-                .andExpect(jsonPath("$.paymentStatus").value("DA_HOAN_TIEN"));
+                .andExpect(jsonPath("$.paymentStatus").value("DA_HOAN_TIEN"))
+                .andExpect(jsonPath("$.cancelledFromStatus").value("READY_FOR_PICKUP"))
+                .andExpect(jsonPath("$.cancellationLossType").value("FULL_ORDER_LOSS"))
+                .andExpect(jsonPath("$.lossAmount").value(29000));
+    }
+
+    @Test @Transactional void newOrderCancellationHasNoMaterialLoss() throws Exception {
+        long orderId = insertOrder("NEW", "QN-CANCEL-NO-LOSS");
+
+        mvc.perform(post("/api/orders/{id}/cancel", orderId).with(csrf())
+                        .contentType("application/json")
+                        .content("{\"reason\":\"Khách đổi ý\",\"refundAmount\":29000}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cancelledFromStatus").value("NEW"))
+                .andExpect(jsonPath("$.cancellationLossType").value("NO_MATERIAL_LOSS"))
+                .andExpect(jsonPath("$.lossAmount").value(0));
+    }
+
+    @Test @Transactional void preparingCancellationUsesFullOrderLossAndIgnoresForgedFields() throws Exception {
+        long orderId = insertOrder("PREPARING", "QN-CANCEL-FORGED-LOSS");
+
+        mvc.perform(post("/api/orders/{id}/cancel", orderId).with(csrf())
+                        .contentType("application/json")
+                        .content("{\"reason\":\"Khách bỏ món\",\"refundAmount\":29000," +
+                                "\"lossAmount\":1,\"cancellationLossType\":\"NO_MATERIAL_LOSS\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cancelledFromStatus").value("PREPARING"))
+                .andExpect(jsonPath("$.cancellationLossType").value("FULL_ORDER_LOSS"))
+                .andExpect(jsonPath("$.lossAmount").value(29000));
+
+        mvc.perform(post("/api/orders/{id}/cancel", orderId).with(csrf())
+                        .contentType("application/json")
+                        .content("{\"reason\":\"Hủy lần hai\",\"refundAmount\":29000}"))
+                .andExpect(status().isConflict());
     }
 
     @Test @Transactional void completedOrderCannotBeCancelled() throws Exception {

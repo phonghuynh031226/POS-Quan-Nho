@@ -53,12 +53,15 @@
  *    - GET /api/orders/{id}
  *
  *    - PATCH /api/orders/{id}/fulfillment-status
- *      Body: { "fulfillmentStatus": "DANG_LAM" | "SAN_SANG" | "DA_GIAO" }
+ *      Body: { "status": "PREPARING" | "READY_FOR_PICKUP" | "COMPLETED" }
+ *      Chỉ cho phép chuyển tuần tự: NEW -> PREPARING -> READY_FOR_PICKUP -> COMPLETED.
  *
  *    - PATCH /api/orders/{id}/items/{lineId}/toggle-done
  *
  *    - POST /api/orders/{id}/cancel (ADMIN)
  *      Body: { "reason": "Khách đổi ý", "refundAmount": 64000 }
+ *      Backend tự xác định cancelledFromStatus, cancellationLossType và lossAmount;
+ *      frontend không gửi hoặc sửa các trường thiệt hại này.
  *
  * 4. PUBLIC TRACKING (NO AUTH REQUIRED):
  *    - GET /api/public/track/{token}

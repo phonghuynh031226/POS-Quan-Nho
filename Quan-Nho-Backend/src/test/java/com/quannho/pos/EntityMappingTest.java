@@ -12,9 +12,12 @@ import com.quannho.pos.order.OrderItemOption;
 import com.quannho.pos.settings.sepay.SepaySettings;
 import com.quannho.pos.settings.shop.ShopSettings;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -50,5 +53,18 @@ class EntityMappingTest {
         assertNotNull(User.class.getDeclaredField("email"));
         assertNotNull(ShopSettings.class.getDeclaredField("storeSubtitle"));
         assertNotNull(ShopSettings.class.getDeclaredField("phone"));
+    }
+
+    @Test
+    void orderMapsFulfillmentStatus() throws Exception {
+        Field field = Order.class.getDeclaredField("fulfillmentStatus");
+        assertEquals(EnumType.STRING, field.getAnnotation(Enumerated.class).value());
+        Column column = field.getAnnotation(Column.class);
+        assertEquals("fulfillment_status", column.name());
+        assertFalse(column.nullable());
+
+        Order order = new Order();
+        field.setAccessible(true);
+        assertEquals("NEW", ((Enum<?>) field.get(order)).name());
     }
 }

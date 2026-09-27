@@ -12,6 +12,7 @@ public class Order {
     @Column(name = "order_code", nullable = false, unique = true, length = 30) private String orderCode;
     @Column(unique = true, length = 100) private String token;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30) private OrderStatus status = OrderStatus.PENDING_PAYMENT;
+    @Enumerated(EnumType.STRING) @Column(name = "fulfillment_status", nullable = false, length = 30) private FulfillmentStatus fulfillmentStatus = FulfillmentStatus.NEW;
     @Enumerated(EnumType.STRING) @Column(name = "payment_status", nullable = false, length = 30) private PaymentStatus paymentStatus = PaymentStatus.UNPAID;
     @Enumerated(EnumType.STRING) @Column(name = "payment_method", length = 30) private PaymentMethod paymentMethod;
     @Column(nullable = false) private long subtotal;

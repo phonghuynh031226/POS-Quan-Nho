@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS orders (
     order_code            VARCHAR(30) NOT NULL UNIQUE,
     token                 VARCHAR(100) UNIQUE,
     status                VARCHAR(30) NOT NULL DEFAULT 'PENDING_PAYMENT',
+    fulfillment_status    VARCHAR(30) NOT NULL DEFAULT 'NEW',
     payment_status        VARCHAR(30) NOT NULL DEFAULT 'UNPAID',
     payment_method        VARCHAR(30),
     subtotal              BIGINT NOT NULL DEFAULT 0 CHECK (subtotal >= 0),
@@ -132,7 +133,9 @@ CREATE TABLE IF NOT EXISTS orders (
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_orders_status
         CHECK (status IN ('PENDING_PAYMENT', 'COMPLETED', 'CANCELLED')),
-        CONSTRAINT chk_orders_payment_status
+    CONSTRAINT chk_orders_fulfillment_status
+        CHECK (fulfillment_status IN ('NEW', 'PREPARING', 'READY_FOR_PICKUP', 'COMPLETED', 'CANCELLED')),
+    CONSTRAINT chk_orders_payment_status
         CHECK (payment_status IN ('UNPAID', 'PAID', 'REFUNDED', 'PARTIALLY_REFUNDED')),
     CONSTRAINT chk_orders_payment_method
         CHECK (payment_method IS NULL OR payment_method IN ('CASH', 'BANK_TRANSFER')),

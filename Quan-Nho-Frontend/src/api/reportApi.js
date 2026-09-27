@@ -1,4 +1,5 @@
 import { orderApi } from './orderApi.js'
+import { summarizeCancellationLoss } from '../utils/cancellationLoss.js'
 
 const delay = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -156,11 +157,16 @@ export const reportApi = {
     const paidOrders = orders.filter((o) => o.paymentStatus === 'DA_THANH_TOAN' || o.payment_status === 'PAID')
     const cancelledOrders = orders.filter(
       (o) =>
-        o.fulfillmentStatus === 'DA_HUY' ||
+        o.fulfillmentStatus === 'CANCELLED' ||
         o.status === 'CANCELLED' ||
         o.paymentStatus === 'DA_HOAN_TIEN' ||
         o.payment_status === 'REFUNDED'
     )
+    const {
+      noMaterialLossCancellationCount,
+      fullOrderLossCancellationCount,
+      totalCancellationLoss,
+    } = summarizeCancellationLoss(cancelledOrders)
 
     let totalGrossRevenue = 0
     let totalRefundAmount = 0
@@ -261,6 +267,9 @@ export const reportApi = {
       totalOrdersCount: orders.length,
       paidOrdersCount: paidOrders.length,
       cancelledOrdersCount: cancelledOrders.length,
+      noMaterialLossCancellationCount,
+      fullOrderLossCancellationCount,
+      totalCancellationLoss,
       totalGrossRevenue,
       totalRefundAmount,
       netRevenue,

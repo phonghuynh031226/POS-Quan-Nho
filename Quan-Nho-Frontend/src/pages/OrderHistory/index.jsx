@@ -6,7 +6,6 @@ import {
   Printer,
   XCircle,
   AlertTriangle,
-  RotateCw,
   ExternalLink,
   ShoppingBag,
   TrendingUp,
@@ -22,7 +21,9 @@ import {
 } from 'lucide-react'
 import { orderApi } from '../../api/orderApi'
 import { formatCurrency, formatDateTime, formatTime } from '../../utils/formatters'
-import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_METHOD } from '../../constants'
+import { canCancelOrder, getNextFulfillmentAction } from '../../utils/orderActions'
+import { getCancellationLossPreview } from '../../utils/cancellationLoss'
+import { PAYMENT_STATUS, PAYMENT_METHOD } from '../../constants'
 import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
 import Modal from '../../components/common/Modal'
@@ -34,11 +35,11 @@ import { useToast } from '../../context/ToastContext'
 
 const STATUS_TABS = [
   { key: 'ALL', label: 'Tất cả' },
-  { key: 'CHO_LAM', label: 'Chờ làm' },
-  { key: 'DANG_LAM', label: 'Đang làm' },
-  { key: 'SAN_SANG', label: 'Sẵn sàng' },
-  { key: 'DA_GIAO', label: 'Đã giao' },
-  { key: 'DA_HUY', label: 'Đã hủy' },
+  { key: 'NEW', label: 'Mới nhận' },
+  { key: 'PREPARING', label: 'Đang chuẩn bị' },
+  { key: 'READY_FOR_PICKUP', label: 'Chờ khách nhận' },
+  { key: 'COMPLETED', label: 'Hoàn tất' },
+  { key: 'CANCELLED', label: 'Đã hủy' },
 ]
 
 export default function OrderHistoryPage() {
@@ -56,6 +57,7 @@ export default function OrderHistoryPage() {
   const [cancellingOrder, setCancellingOrder] = useState(null)
   const [cancelReason, setCancelReason] = useState('')
   const [isCancelling, setIsCancelling] = useState(false)
+  const [updatingOrderId, setUpdatingOrderId] = useState(null)
 
   const { currentUser } = useAuth()
   const toast = useToast()
@@ -101,10 +103,10 @@ export default function OrderHistoryPage() {
   // KPI Calculations
   const stats = useMemo(() => {
     const totalCount = allOrders.length
-    const validOrders = allOrders.filter((o) => o.fulfillmentStatus !== 'DA_HUY')
+    const validOrders = allOrders.filter((o) => o.fulfillmentStatus !== 'CANCELLED')
     const totalRevenue = validOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0)
-    const completedCount = allOrders.filter((o) => o.fulfillmentStatus === 'DA_GIAO').length
-    const cancelledOrders = allOrders.filter((o) => o.fulfillmentStatus === 'DA_HUY')
+    const completedCount = allOrders.filter((o) => o.fulfillmentStatus === 'COMPLETED').length
+    const cancelledOrders = allOrders.filter((o) => o.fulfillmentStatus === 'CANCELLED')
     const cancelledCount = cancelledOrders.length
     const totalRefund = cancelledOrders.reduce(
       (sum, o) => sum + (Number(o.refundAmount || o.totalAmount) || 0),
@@ -114,11 +116,11 @@ export default function OrderHistoryPage() {
     // Counts per status
     const counts = {
       ALL: totalCount,
-      CHO_LAM: allOrders.filter((o) => o.fulfillmentStatus === 'CHO_LAM').length,
-      DANG_LAM: allOrders.filter((o) => o.fulfillmentStatus === 'DANG_LAM').length,
-      SAN_SANG: allOrders.filter((o) => o.fulfillmentStatus === 'SAN_SANG').length,
-      DA_GIAO: completedCount,
-      DA_HUY: cancelledCount,
+      NEW: allOrders.filter((o) => o.fulfillmentStatus === 'NEW').length,
+      PREPARING: allOrders.filter((o) => o.fulfillmentStatus === 'PREPARING').length,
+      READY_FOR_PICKUP: allOrders.filter((o) => o.fulfillmentStatus === 'READY_FOR_PICKUP').length,
+      COMPLETED: completedCount,
+      CANCELLED: cancelledCount,
     }
 
     return {
@@ -155,6 +157,27 @@ export default function OrderHistoryPage() {
       setIsCancelling(false)
     }
   }
+
+  const handleAdvanceFulfillment = async (order) => {
+    const action = getNextFulfillmentAction(order)
+    if (!action) return
+
+    setUpdatingOrderId(order.id)
+    try {
+      const updatedOrder = await orderApi.updateFulfillmentStatus(order.id, action.nextStatus)
+      toast.success(`${order.orderNumber}: ${action.successMessage}`)
+      if (viewingOrder?.id === order.id) setViewingOrder(updatedOrder)
+      await loadOrders()
+    } catch (err) {
+      toast.error('Lỗi cập nhật trạng thái đơn: ' + err.message)
+    } finally {
+      setUpdatingOrderId(null)
+    }
+  }
+
+  const cancellationPreview = cancellingOrder
+    ? getCancellationLossPreview(cancellingOrder)
+    : null
 
   return (
     <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
@@ -204,17 +227,6 @@ export default function OrderHistoryPage() {
               <span className="hidden sm:inline">Dạng Bảng</span>
             </button>
           </div>
-
-          {/* Refresh Button */}
-          <button
-            type="button"
-            onClick={loadOrders}
-            disabled={loading}
-            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white border border-[#D4C7B8] hover:bg-[#F5EFEB] text-stone-700 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold shadow-2xs"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#C88A35]' : ''}`} />
-            <span className="hidden sm:inline">Làm mới</span>
-          </button>
         </div>
       </div>
 
@@ -254,14 +266,14 @@ export default function OrderHistoryPage() {
           </div>
         </div>
 
-        {/* Card 3: Đã giao xong */}
+        {/* Card 3: Hoàn tất */}
         <div className="bg-white p-4 rounded-2xl border border-[#E8DFD5] shadow-2xs flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider block">
-              Đã giao xong
+              Hoàn tất
             </span>
             <div className="text-lg sm:text-xl font-black text-[#2D1B14] truncate">
               {stats.completedCount}{' '}
@@ -399,7 +411,8 @@ export default function OrderHistoryPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {orders.map((order) => {
             const itemCount = order.items.reduce((s, i) => s + i.quantity, 0)
-            const isCancelled = order.fulfillmentStatus === 'DA_HUY'
+            const isCancelled = order.fulfillmentStatus === 'CANCELLED'
+            const nextAction = getNextFulfillmentAction(order)
 
             return (
               <div
@@ -482,6 +495,18 @@ export default function OrderHistoryPage() {
                       <strong>Lý do hủy:</strong> {order.refundReason}
                     </div>
                   )}
+                  {isCancelled && order.cancellationLossType && (
+                    <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+                      <strong>
+                        {order.cancellationLossType === 'FULL_ORDER_LOSS'
+                          ? 'Hủy có hao hụt'
+                          : 'Hủy không hao hụt nguyên liệu'}
+                      </strong>
+                      <span className="block mt-0.5">
+                        Tiền lỗ của quán: {formatCurrency(order.lossAmount || 0)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Card Footer */}
@@ -505,6 +530,19 @@ export default function OrderHistoryPage() {
                     className="flex items-center gap-1.5"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {nextAction && (
+                      <Button
+                        variant="accent"
+                        size="sm"
+                        icon={CheckCircle2}
+                        loading={updatingOrderId === order.id}
+                        onClick={() => handleAdvanceFulfillment(order)}
+                        className="text-[11px]"
+                      >
+                        {nextAction.label}
+                      </Button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => setViewingOrder(order)}
@@ -524,7 +562,7 @@ export default function OrderHistoryPage() {
                     </button>
 
                     {(currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN') &&
-                      !isCancelled && (
+                      canCancelOrder(order) && (
                         <button
                           type="button"
                           onClick={() => {
@@ -562,7 +600,8 @@ export default function OrderHistoryPage() {
               <tbody className="divide-y divide-[#E8DFD5]">
                 {orders.map((order) => {
                   const itemCount = order.items.reduce((s, i) => s + i.quantity, 0)
-                  const isCancelled = order.fulfillmentStatus === 'DA_HUY'
+                  const isCancelled = order.fulfillmentStatus === 'CANCELLED'
+                  const nextAction = getNextFulfillmentAction(order)
 
                   return (
                     <tr
@@ -636,6 +675,19 @@ export default function OrderHistoryPage() {
 
                       <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
+                          {nextAction && (
+                            <Button
+                              variant="accent"
+                              size="sm"
+                              icon={CheckCircle2}
+                              loading={updatingOrderId === order.id}
+                              onClick={() => handleAdvanceFulfillment(order)}
+                              className="whitespace-nowrap text-[11px]"
+                            >
+                              {nextAction.label}
+                            </Button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => setViewingOrder(order)}
@@ -655,7 +707,7 @@ export default function OrderHistoryPage() {
                           </button>
 
                           {(currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN') &&
-                            !isCancelled && (
+                            canCancelOrder(order) && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -708,13 +760,21 @@ export default function OrderHistoryPage() {
             </div>
 
             {/* Cancel notice */}
-            {viewingOrder.fulfillmentStatus === 'DA_HUY' && (
+            {viewingOrder.fulfillmentStatus === 'CANCELLED' && (
               <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-900 space-y-1">
                 <div className="font-bold text-xs">Đơn này đã bị hủy</div>
                 <p className="text-xs">Lý do: {viewingOrder.refundReason}</p>
                 <p className="text-xs font-semibold">
                   Số tiền hoàn: {formatCurrency(viewingOrder.refundAmount)}
                 </p>
+                {viewingOrder.cancellationLossType && (
+                  <p className="text-xs font-semibold">
+                    {viewingOrder.cancellationLossType === 'FULL_ORDER_LOSS'
+                      ? 'Hủy có hao hụt'
+                      : 'Hủy không hao hụt nguyên liệu'}
+                    {' · '}Tiền lỗ của quán: {formatCurrency(viewingOrder.lossAmount || 0)}
+                  </p>
+                )}
               </div>
             )}
 
@@ -774,6 +834,19 @@ export default function OrderHistoryPage() {
 
             {/* Action buttons inside detail modal */}
             <div className="pt-2 flex flex-col gap-2">
+              {getNextFulfillmentAction(viewingOrder) && (
+                <Button
+                  variant="accent"
+                  size="sm"
+                  icon={CheckCircle2}
+                  loading={updatingOrderId === viewingOrder.id}
+                  onClick={() => handleAdvanceFulfillment(viewingOrder)}
+                  className="w-full text-xs"
+                >
+                  {getNextFulfillmentAction(viewingOrder).label}
+                </Button>
+              )}
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -788,7 +861,7 @@ export default function OrderHistoryPage() {
                 </Button>
 
                 {(currentUser?.role === 'OWNER' || currentUser?.role === 'ADMIN') &&
-                  viewingOrder.fulfillmentStatus !== 'DA_HUY' && (
+                  canCancelOrder(viewingOrder) && (
                     <Button
                       variant="danger"
                       size="sm"
@@ -849,6 +922,23 @@ export default function OrderHistoryPage() {
               </span>
             </div>
 
+            {cancellationPreview && (
+              <div
+                className={`p-3 rounded-xl border text-xs ${
+                  cancellationPreview.type === 'FULL_ORDER_LOSS'
+                    ? 'bg-rose-50 border-rose-300 text-rose-900'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                }`}
+              >
+                <strong className="block text-sm">{cancellationPreview.label}</strong>
+                <p className="mt-1">{cancellationPreview.description}</p>
+                <div className="mt-2 flex items-center justify-between font-bold">
+                  <span>Tiền lỗ của quán:</span>
+                  <span>{formatCurrency(cancellationPreview.lossAmount)}</span>
+                </div>
+              </div>
+            )}
+
             <div className="pt-2 flex justify-end gap-3">
               <Button
                 variant="outline"
@@ -876,6 +966,7 @@ export default function OrderHistoryPage() {
         onClose={() => setReprintingOrder(null)}
         order={reprintingOrder}
         isReprint={true}
+        initialPrintType="both"
         onPrinted={() => {
           loadOrders()
         }}

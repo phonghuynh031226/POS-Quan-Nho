@@ -10,7 +10,7 @@ import {
   Award,
   ChevronLeft,
   ChevronRight,
-  Download,
+  FileSpreadsheet,
   ShoppingBag,
   Clock,
   Eye,
@@ -19,7 +19,13 @@ import {
   Percent,
 } from 'lucide-react'
 import { reportApi } from '../../api/reportApi'
+import { settingsApi } from '../../api/settingsApi'
 import { formatCurrency, formatDateTime } from '../../utils/formatters'
+import {
+  buildReportFilename,
+  buildReportWorkbook,
+  saveReportWorkbook,
+} from '../../utils/reportExcel'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import Button from '../../components/common/Button'
 import ReceiptModal from '../../components/print/ReceiptModal'
@@ -92,57 +98,27 @@ export default function ReportsPage() {
     }
   }
 
-  // Export report summary and orders to CSV
-  const handleExportCSV = () => {
+  // Export report summary and orders to Excel (.xlsx)
+  const handleExportExcel = async () => {
     if (!stats) return
     try {
-      const headers = ['Mã đơn', 'Thời gian', 'Thu ngân', 'Phương thức', 'Trạng thái', 'Tổng tiền (VNĐ)']
-      const rows = (stats.orders || []).map((o) => [
-        `"${o.orderNumber || o.order_code || o.id}"`,
-        `"${formatDateTime(o.createdAt || o.created_at)}"`,
-        `"${o.createdBy || 'Chủ quán'}"`,
-        `"${o.paymentMethod === 'TIEN_MAT' || o.payment_method === 'CASH' ? 'Tiền mặt' : 'Chuyển khoản VietQR'}"`,
-        `"${o.paymentStatus === 'DA_THANH_TOAN' || o.payment_status === 'PAID' ? 'Đã thanh toán' : o.paymentStatus}"`,
-        Number(o.totalAmount ?? o.total_amount ?? 0),
-      ])
+      const settings = await settingsApi.getSettings().catch(() => ({ storeName: 'Quán Nhỏ' }))
+      const shopName = settings.storeName || settings.shop_name || 'Quán Nhỏ'
+      const workbook = buildReportWorkbook({ shopName, stats })
+      const filename = buildReportFilename({
+        shopName,
+        periodType,
+        selectedDate,
+        selectedMonth,
+        selectedYear,
+        fromDate: stats.fromDate || fromDate,
+        toDate: stats.toDate || toDate,
+      })
 
-      const summaryLines = [
-        ['BÁO CÁO DOANH THU QUÁN NHỎ'],
-        [`Kỳ báo cáo: ${stats.label}`],
-        [`Ngày xuất: ${new Date().toLocaleString('vi-VN')}`],
-        [],
-        ['CHỈ SỐ CHÍNH'],
-        ['Doanh thu thực:', stats.netRevenue],
-        ['Tổng doanh thu gộp:', stats.totalGrossRevenue],
-        ['Tiền hoàn hủy đơn:', stats.totalRefundAmount],
-        ['Tổng số đơn:', stats.totalOrdersCount],
-        ['Đơn thành công:', stats.paidOrdersCount],
-        ['Giá trị trung bình đơn (AOV):', stats.averageOrderValue],
-        ['Tổng số phần món:', stats.totalItemsSold],
-        ['Doanh thu Tiền mặt:', stats.cashRevenue],
-        ['Doanh thu Chuyển khoản:', stats.transferRevenue],
-        [],
-        ['DANH SÁCH GIAO DỊCH CHI TIẾT'],
-        headers,
-        ...rows,
-      ]
-
-      const csvContent =
-        '\uFEFF' + summaryLines.map((e) => (Array.isArray(e) ? e.join(',') : e)).join('\r\n')
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.setAttribute('href', url)
-      link.setAttribute(
-        'download',
-        `BaoCao_QuanNho_${periodType}_${new Date().toISOString().slice(0, 10)}.csv`
-      )
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      toast.success('Đã xuất báo cáo CSV thành công!')
+      saveReportWorkbook(workbook, filename)
+      toast.success('Đã xuất báo cáo Excel (.xlsx) thành công!')
     } catch (err) {
-      toast.error('Lỗi xuất file: ' + err.message)
+      toast.error('Lỗi xuất file Excel: ' + err.message)
     }
   }
 
@@ -219,12 +195,12 @@ export default function ReportsPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            icon={Download}
-            onClick={handleExportCSV}
+            icon={FileSpreadsheet}
+            onClick={handleExportExcel}
             disabled={loading || !stats}
-            className="text-xs font-bold bg-white"
+            className="text-xs font-bold bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 cursor-pointer shadow-xs"
           >
-            Xuất file CSV
+            Xuất file Excel (.xlsx)
           </Button>
         </div>
       </div>
@@ -436,6 +412,20 @@ export default function ReportsPage() {
               <p className="text-[11px] text-stone-500">
                 {stats.cancelledOrdersCount} đơn hủy / {stats.totalOrdersCount} tổng số đơn
               </p>
+              <div className="pt-2 border-t border-rose-100 space-y-1 text-[11px]">
+                <div className="flex justify-between text-stone-600">
+                  <span>Hủy không hao hụt</span>
+                  <strong>{stats.noMaterialLossCancellationCount || 0} đơn</strong>
+                </div>
+                <div className="flex justify-between text-stone-600">
+                  <span>Hủy có hao hụt</span>
+                  <strong>{stats.fullOrderLossCancellationCount || 0} đơn</strong>
+                </div>
+                <div className="flex justify-between text-rose-700">
+                  <span>Tiền lỗ do đơn hủy</span>
+                  <strong>{formatCurrency(stats.totalCancellationLoss || 0)}</strong>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -970,7 +960,7 @@ export default function ReportsPage() {
                       const isPaid =
                         order.paymentStatus === 'DA_THANH_TOAN' || order.payment_status === 'PAID'
                       const isCancelled =
-                        order.fulfillmentStatus === 'DA_HUY' ||
+                        order.fulfillmentStatus === 'CANCELLED' ||
                         order.status === 'CANCELLED' ||
                         order.paymentStatus === 'DA_HOAN_TIEN'
 

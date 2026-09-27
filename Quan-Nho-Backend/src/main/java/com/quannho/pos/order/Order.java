@@ -26,6 +26,9 @@ public class Order {
     @Column(name = "customer_note", length = 1000) private String customerNote;
     @Column(name = "cancel_reason", length = 500) private String cancelReason;
     @Column(name = "refund_amount", nullable = false) private long refundAmount;
+    @Enumerated(EnumType.STRING) @Column(name = "cancelled_from_status", length = 30) private FulfillmentStatus cancelledFromStatus;
+    @Enumerated(EnumType.STRING) @Column(name = "cancellation_loss_type", length = 30) private CancellationLossType cancellationLossType;
+    @Column(name = "loss_amount", nullable = false) private long lossAmount;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "created_by", nullable = false) private User createdBy;
     @Column(name = "created_at", nullable = false, updatable = false) private OffsetDateTime createdAt;
     @Column(name = "paid_at") private OffsetDateTime paidAt;

@@ -123,6 +123,9 @@ CREATE TABLE IF NOT EXISTS orders (
     customer_note         VARCHAR(1000),
     cancel_reason         VARCHAR(500),
     refund_amount         BIGINT NOT NULL DEFAULT 0 CHECK (refund_amount >= 0),
+    cancelled_from_status VARCHAR(30),
+    cancellation_loss_type VARCHAR(30),
+    loss_amount           BIGINT NOT NULL DEFAULT 0 CHECK (loss_amount >= 0),
     created_by            BIGINT NOT NULL REFERENCES users(id),
     created_at            TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     paid_at               TIMESTAMPTZ,
@@ -133,6 +136,10 @@ CREATE TABLE IF NOT EXISTS orders (
         CHECK (status IN ('PENDING_PAYMENT', 'COMPLETED', 'CANCELLED')),
     CONSTRAINT chk_orders_fulfillment_status
         CHECK (fulfillment_status IN ('NEW', 'PREPARING', 'READY_FOR_PICKUP', 'COMPLETED', 'CANCELLED')),
+    CONSTRAINT chk_orders_cancelled_from_status
+        CHECK (cancelled_from_status IS NULL OR cancelled_from_status IN ('NEW', 'PREPARING', 'READY_FOR_PICKUP')),
+    CONSTRAINT chk_orders_cancellation_loss_type
+        CHECK (cancellation_loss_type IS NULL OR cancellation_loss_type IN ('NO_MATERIAL_LOSS', 'FULL_ORDER_LOSS')),
     CONSTRAINT chk_orders_payment_status
         CHECK (payment_status IN ('UNPAID', 'PAID', 'REFUNDED', 'PARTIALLY_REFUNDED')),
     CONSTRAINT chk_orders_payment_method

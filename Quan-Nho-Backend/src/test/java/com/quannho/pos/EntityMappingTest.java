@@ -9,6 +9,7 @@ import com.quannho.pos.catalog.product.Product;
 import com.quannho.pos.order.Order;
 import com.quannho.pos.order.OrderItem;
 import com.quannho.pos.order.OrderItemOption;
+import com.quannho.pos.order.CancellationLossType;
 import com.quannho.pos.settings.sepay.SepaySettings;
 import com.quannho.pos.settings.shop.ShopSettings;
 import jakarta.persistence.Entity;
@@ -66,5 +67,26 @@ class EntityMappingTest {
         Order order = new Order();
         field.setAccessible(true);
         assertEquals("NEW", ((Enum<?>) field.get(order)).name());
+    }
+
+    @Test
+    void orderMapsCancellationLossAuditFields() throws Exception {
+        Field cancelledFrom = Order.class.getDeclaredField("cancelledFromStatus");
+        assertEquals(EnumType.STRING, cancelledFrom.getAnnotation(Enumerated.class).value());
+        assertEquals("cancelled_from_status", cancelledFrom.getAnnotation(Column.class).name());
+
+        Field lossType = Order.class.getDeclaredField("cancellationLossType");
+        assertEquals(EnumType.STRING, lossType.getAnnotation(Enumerated.class).value());
+        assertEquals("cancellation_loss_type", lossType.getAnnotation(Column.class).name());
+        assertArrayEquals(
+                new String[]{"NO_MATERIAL_LOSS", "FULL_ORDER_LOSS"},
+                java.util.Arrays.stream(CancellationLossType.values()).map(Enum::name).toArray(String[]::new));
+
+        Field lossAmount = Order.class.getDeclaredField("lossAmount");
+        Column lossColumn = lossAmount.getAnnotation(Column.class);
+        assertEquals("loss_amount", lossColumn.name());
+        assertFalse(lossColumn.nullable());
+        lossAmount.setAccessible(true);
+        assertEquals(0L, lossAmount.getLong(new Order()));
     }
 }

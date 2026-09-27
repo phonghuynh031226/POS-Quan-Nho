@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -37,7 +38,7 @@ public class OrderController {
         order.put("paymentStatus", switch (String.valueOf(row.get("payment_status"))) {
             case "PAID" -> "DA_THANH_TOAN"; case "REFUNDED" -> "DA_HOAN_TIEN"; default -> "CHUA_THANH_TOAN";
         });
-        order.put("fulfillmentStatus", "CANCELLED".equals(row.get("status")) ? "DA_HUY" : "DA_GIAO");
+        order.put("fulfillmentStatus", row.get("fulfillment_status"));
         order.put("createdAt", row.get("created_at")); order.put("paidAt", row.get("paid_at"));
         order.put("updatedAt", row.get("updated_at")); order.put("createdBy", row.get("creator_name"));
         order.put("refundAmount", row.get("refund_amount")); order.put("customerNote", row.get("customer_note"));
@@ -91,9 +92,9 @@ public class OrderController {
         long id = jdbc.queryForObject("SELECT nextval('orders_id_seq')", Long.class);
         String orderCode = "QN-%06d".formatted(id);
         String token = UUID.randomUUID().toString().replace("-", "");
-        jdbc.update("INSERT INTO orders(id,order_code,token,status,payment_status,payment_method,subtotal," +
+        jdbc.update("INSERT INTO orders(id,order_code,token,status,fulfillment_status,payment_status,payment_method,subtotal," +
                 "discount_amount,total_amount,payment_amount,cash_received,change_amount,customer_note,refund_amount," +
-                "created_by,paid_at) VALUES (?,?,?,'COMPLETED','PAID','CASH',?,0,?,?,?,?,?,0,?,now())",
+                "created_by,paid_at) VALUES (?,?,?,'COMPLETED','NEW','PAID','CASH',?,0,?,?,?,?,?,0,?,now())",
                 id, orderCode, token, subtotal, subtotal, subtotal, cash, cash - subtotal,
                 payload.get("customer_note"), userId);
         for (Line line : lines) {
@@ -108,6 +109,31 @@ public class OrderController {
                         choice.valueId(), choice.groupName(), choice.valueName(), choice.price());
             }
         }
+        return one(id);
+    }
+
+    @PatchMapping("/{id}/fulfillment-status") @Transactional
+    public Map<String, Object> updateFulfillmentStatus(@PathVariable long id,
+            @RequestBody Map<String, Object> body) {
+        FulfillmentStatus requested = fulfillmentStatus(body.get("status"));
+        String currentValue = jdbc.queryForList("SELECT fulfillment_status FROM orders WHERE id=?", id).stream()
+                .findFirst().map(row -> String.valueOf(row.get("fulfillment_status")))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Đơn không tồn tại"));
+        FulfillmentStatus current = fulfillmentStatus(currentValue);
+        FulfillmentStatus expected = switch (current) {
+            case NEW -> FulfillmentStatus.PREPARING;
+            case PREPARING -> FulfillmentStatus.READY_FOR_PICKUP;
+            case READY_FOR_PICKUP -> FulfillmentStatus.COMPLETED;
+            case COMPLETED, CANCELLED -> null;
+        };
+        if (requested != expected)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Không thể chuyển trạng thái theo thứ tự yêu cầu");
+
+        int updated = jdbc.update("UPDATE orders SET fulfillment_status=?,updated_at=now() " +
+                        "WHERE id=? AND fulfillment_status=? AND status<>'CANCELLED'",
+                requested.name(), id, current.name());
+        if (updated == 0)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Trạng thái đơn vừa được thay đổi");
         return one(id);
     }
 
@@ -146,12 +172,29 @@ public class OrderController {
         if (reason.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cần lý do hủy");
         long refund = number(body.get("refundAmount"));
         Map<String, Object> order = one(id);
+        FulfillmentStatus fulfillment = fulfillmentStatus(order.get("fulfillmentStatus"));
+        if (!EnumSet.of(FulfillmentStatus.NEW, FulfillmentStatus.PREPARING,
+                FulfillmentStatus.READY_FOR_PICKUP).contains(fulfillment))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Đơn đã hoàn tất hoặc đã hủy, không thể hủy lại");
         if (refund < 0 || refund > ((Number) order.get("total_amount")).longValue())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số tiền hoàn không hợp lệ");
-        jdbc.update("UPDATE orders SET status='CANCELLED',payment_status=?,cancel_reason=?,refund_amount=?," +
-                        "cancelled_at=now(),refunded_at=?,updated_at=now() WHERE id=?",
-                refund > 0 ? "REFUNDED" : "PAID", reason, refund, refund > 0 ? java.time.OffsetDateTime.now() : null, id);
+        int updated = jdbc.update("UPDATE orders SET status='CANCELLED',fulfillment_status='CANCELLED'," +
+                        "payment_status=?,cancel_reason=?,refund_amount=?,cancelled_at=now(),refunded_at=?,updated_at=now() " +
+                        "WHERE id=? AND fulfillment_status=? AND status<>'CANCELLED'",
+                refund > 0 ? "REFUNDED" : "PAID", reason, refund,
+                refund > 0 ? java.time.OffsetDateTime.now() : null, id, fulfillment.name());
+        if (updated == 0)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Trạng thái đơn vừa được thay đổi");
         return one(id);
+    }
+
+    private static FulfillmentStatus fulfillmentStatus(Object value) {
+        if (value == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái chế biến là bắt buộc");
+        try { return FulfillmentStatus.valueOf(String.valueOf(value).trim()); }
+        catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái chế biến không hợp lệ");
+        }
     }
 
     private static long number(Object value) {

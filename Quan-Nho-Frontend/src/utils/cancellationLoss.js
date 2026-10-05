@@ -41,3 +41,10 @@ export function summarizeCancellationLoss(cancelledOrders = []) {
     }
   )
 }
+
+export function sumRefundAmounts(cancelledOrders = []) {
+  return cancelledOrders.reduce(
+    (total, order) => total + safeAmount(order?.refundAmount ?? order?.refund_amount),
+    0
+  )
+}

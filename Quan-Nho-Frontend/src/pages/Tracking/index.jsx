@@ -11,6 +11,7 @@ import {
   BellRing,
 } from 'lucide-react'
 import { orderApi } from '../../api/orderApi'
+import { settingsApi } from '../../api/settingsApi'
 import { formatTime, formatCurrency } from '../../utils/formatters'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
@@ -20,8 +21,17 @@ export default function TrackingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [lastChecked, setLastChecked] = useState(new Date())
+  const [shopName, setShopName] = useState('')
 
   const intervalRef = useRef(null)
+
+  useEffect(() => {
+    let active = true
+    settingsApi.getPublicShopInfo()
+      .then((shop) => { if (active) setShopName(shop.shop_name || '') })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
 
   const fetchTrackingOrder = async (silent = false) => {
     if (!token) {
@@ -111,7 +121,7 @@ export default function TrackingPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#3E2723] text-white shadow-md mb-2">
             <Coffee className="w-6 h-6 text-[#C88A35]" />
           </div>
-          <h1 className="text-xl font-black tracking-tight text-[#2D1B14]">QUÁN NHỎ</h1>
+          <h1 className="text-xl font-black tracking-tight text-[#2D1B14]">{shopName}</h1>
           <p className="text-xs text-stone-500">Trang tra cứu tiến độ đơn hàng</p>
         </div>
 
@@ -126,7 +136,7 @@ export default function TrackingPage() {
               {order.orderNumber}
             </div>
             <p className="text-xs text-stone-500">
-              Đặt lúc {formatTime(order.createdAt)} • Thu ngân: {order.createdBy || 'Quán Nhỏ'}
+              Đặt lúc {formatTime(order.createdAt)}{order.createdBy ? ` • Thu ngân: ${order.createdBy}` : ''}
             </p>
           </div>
 
@@ -152,7 +162,7 @@ export default function TrackingPage() {
                 <span>ĐƠN HÀNG ĐÃ ĐƯỢC GIAO</span>
               </div>
               <p className="text-xs text-stone-600">
-                Chúc bạn có những phút giây thư giãn và ngon miệng tại Quán Nhỏ!
+                Chúc bạn ngon miệng!
               </p>
             </div>
           )}

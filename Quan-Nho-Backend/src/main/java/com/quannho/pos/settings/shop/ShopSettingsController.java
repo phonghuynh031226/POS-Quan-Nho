@@ -18,6 +18,11 @@ public class ShopSettingsController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @GetMapping("/shop/public") public Map<String, Object> publicInfo() {
+        return jdbc.queryForList("SELECT shop_name,store_subtitle,phone,shop_address FROM shop_settings ORDER BY id LIMIT 1")
+                .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    }
+
     @GetMapping("/shop") public Map<String, Object> shop() {
         return jdbc.queryForList("SELECT id,shop_name,store_subtitle,phone,shop_address,wifi_name," +
                 "wifi_password_encrypted,receipt_message,show_wifi_on_receipt FROM shop_settings ORDER BY id LIMIT 1")

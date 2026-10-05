@@ -1,5 +1,6 @@
 import apiClient from './apiClient'
 import { DEFAULT_STORE_SETTINGS } from '../constants'
+import { buildResetShopSettings } from '../utils/shopSettings'
 
 const toSettings = (shop) => ({
   ...DEFAULT_STORE_SETTINGS,
@@ -33,7 +34,12 @@ export const settingsApi = {
     return toSettings(data)
   },
   async resetSettings() {
-    return this.updateSettings(DEFAULT_STORE_SETTINGS)
+    const currentSettings = await this.getSettings()
+    return this.updateSettings(buildResetShopSettings(currentSettings, DEFAULT_STORE_SETTINGS))
+  },
+  async getPublicShopInfo() {
+    const { data } = await apiClient.get('/settings/shop/public')
+    return data
   },
   async getShopSettings() {
     const { data } = await apiClient.get('/settings/shop')

@@ -4,7 +4,15 @@ import { readFile } from 'node:fs/promises'
 import {
   getCancellationLossPreview,
   summarizeCancellationLoss,
+  sumRefundAmounts,
 } from '../src/utils/cancellationLoss.js'
+
+test('refund totals preserve an explicit zero refund instead of counting the order total', () => {
+  assert.equal(sumRefundAmounts([
+    { refundAmount: 0, totalAmount: 35000 },
+    { refund_amount: 12000, total_amount: 35000 },
+  ]), 12000)
+})
 
 test('cancellation preview classifies loss from the current fulfillment state', () => {
   assert.deepEqual(getCancellationLossPreview({ fulfillmentStatus: 'NEW', totalAmount: 30000 }), {

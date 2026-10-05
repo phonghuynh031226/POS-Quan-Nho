@@ -3,22 +3,18 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ROLES, DEMO_ACCOUNTS } from '../src/constants/index.js'
+import { ROLES } from '../src/constants/index.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const navbarPath = path.resolve(__dirname, '../src/components/layout/Navbar.jsx')
 const routesPath = path.resolve(__dirname, '../src/routes/index.jsx')
 
-test('Only ADMIN role and single admin demo account exist', () => {
+test('Only supported owner roles exist in the frontend role map', () => {
   // Check ROLES
   const roleKeys = Object.keys(ROLES)
   assert.ok(roleKeys.includes('ADMIN') || roleKeys.includes('OWNER'))
   assert.equal(ROLES.ADMIN.name, 'Chủ quán')
 
-  // Check DEMO_ACCOUNTS
-  assert.equal(DEMO_ACCOUNTS.length, 1)
-  assert.equal(DEMO_ACCOUNTS[0].username, 'admin')
-  assert.ok(DEMO_ACCOUNTS[0].role === 'ADMIN' || DEMO_ACCOUNTS[0].role === 'OWNER')
 })
 
 test('Navbar only contains the 5 core Owner navigation items', async () => {

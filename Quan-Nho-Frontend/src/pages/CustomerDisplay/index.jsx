@@ -1,16 +1,12 @@
 import { useState, useEffect, useTransition } from 'react'
-import QRCode from 'qrcode'
 import {
   Coffee,
   ShoppingBag,
   CheckCircle2,
-  QrCode,
   Banknote,
   Maximize2,
   Minimize2,
-  Sparkles,
   Clock,
-  Heart,
   ArrowRight,
 } from 'lucide-react'
 import {
@@ -21,39 +17,31 @@ import {
 } from '../../utils/customerDisplaySync'
 import { formatCurrency, formatDateTime } from '../../utils/formatters'
 import { DEFAULT_STORE_SETTINGS } from '../../constants'
-
-// Danh sách món nổi bật giới thiệu khi ở màn hình chờ
-const FEATURED_ITEMS = [
-  {
-    name: 'Cà phê sữa đá truyền thống',
-    price: 29000,
-    tag: 'Bán chạy nhất',
-    image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&auto=format&fit=crop&q=60',
-    desc: 'Đậm đà cà phê Robusta rang mộc kết hợp sữa đặc ngọt béo',
-  },
-  {
-    name: 'Bạc xỉu kem sữa 3 tầng',
-    price: 32000,
-    tag: 'Đặc sản quán',
-    image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=500&auto=format&fit=crop&q=60',
-    desc: 'Nhiều sữa tươi béo thơm, ngọt thanh nhẹ nhàng',
-  },
-  {
-    name: 'Trà đào cam sả thanh mát',
-    price: 35000,
-    tag: 'Món giải nhiệt',
-    image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=500&auto=format&fit=crop&q=60',
-    desc: 'Trà đen hảo hạng quyện hương sả và lát đào giòn ngọt',
-  },
-]
+import { settingsApi } from '../../api/settingsApi'
 
 export default function CustomerDisplayPage() {
-  const [storeSettings] = useState(DEFAULT_STORE_SETTINGS)
+  const [storeSettings, setStoreSettings] = useState(DEFAULT_STORE_SETTINGS)
   const [displayData, setDisplayData] = useState(() => getDisplayState())
-  const [qrCodeUrl, setQrCodeUrl] = useState('')
   const [countdown, setCountdown] = useState(() => storeSettings.autoResetDelaySeconds || 5)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  useEffect(() => {
+    let active = true
+    settingsApi.getPublicShopInfo()
+      .then((shop) => {
+        if (active) {
+          setStoreSettings((current) => ({
+            ...current,
+            ...shop,
+            storeName: shop.shop_name || '',
+            storeSubtitle: shop.store_subtitle || '',
+          }))
+        }
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
 
   // Đồng hồ thời gian thực
   useEffect(() => {
@@ -72,40 +60,6 @@ export default function CustomerDisplayPage() {
     })
     return unsubscribe
   }, [])
-
-  // Sinh mã QR khi trạng thái là thanh toán chuyển khoản
-  useEffect(() => {
-    if (
-      displayData.type === DISPLAY_STATES.PAYMENT &&
-      displayData.paymentMethod === 'CHUYEN_KHOAN' &&
-      displayData.totalAmount > 0
-    ) {
-      const amount = displayData.totalAmount
-      const orderCode = displayData.orderNumber || 'QN' + Date.now().toString().slice(-4)
-      const bankCode = storeSettings.bankName?.includes('MB') ? 'MB' : 'VCB'
-      const prefix = storeSettings.transferContentPrefix || 'QUAN NHO'
-      const accNumber = storeSettings.bankAccountNumber || '0901234567'
-      const accName = storeSettings.bankAccountName || 'QUAN NHO COFFEE'
-
-      // Tạo cú pháp VietQR mẫu chuẩn
-      const qrContent = `https://img.vietqr.io/image/${bankCode}-${accNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(
-        prefix + ' ' + orderCode
-      )}&accountName=${encodeURIComponent(accName)}`
-
-      QRCode.toDataURL(qrContent, {
-        width: 280,
-        margin: 1,
-        color: {
-          dark: '#2D1B14',
-          light: '#ffffff',
-        },
-      })
-        .then((url) => setQrCodeUrl(url))
-        .catch(() => {
-          setQrCodeUrl('')
-        })
-    }
-  }, [displayData, storeSettings])
 
   // Đếm ngược khi thanh toán thành công rồi tự động quay về Màn hình chờ
   useEffect(() => {
@@ -165,14 +119,14 @@ export default function CustomerDisplayPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="font-black text-lg tracking-tight text-[#FDFBF7]">
-                {storeSettings.storeName || 'QUÁN NHỎ'}
+                {storeSettings.storeName}
               </h1>
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-[#4A2E20] text-[#E09F3E]">
                 MÀN HÌNH KHÁCH
               </span>
             </div>
             <p className="text-xs text-[#D4C7B8]">
-              {storeSettings.storeSubtitle || 'Cà phê & Đồ ăn vặt thơm ngon'}
+              {storeSettings.storeSubtitle}
             </p>
           </div>
         </div>
@@ -202,75 +156,14 @@ export default function CustomerDisplayPage() {
         {/* TRẠNG THÁI 1: MÀN HÌNH CHỜ (IDLE) */}
         {/* ================================================================================= */}
         {displayData.type === DISPLAY_STATES.IDLE && (
-          <div className="flex-1 flex flex-col justify-center items-center py-8 space-y-8 animate-in fade-in duration-300">
-            {/* Welcome banner */}
+          <div className="flex-1 flex flex-col justify-center items-center py-8 animate-in fade-in duration-300">
             <div className="text-center space-y-3 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#EFE9E0] text-[#7A5A43] text-xs font-extrabold uppercase tracking-wider border border-[#D4C7B8]">
-                <Sparkles className="w-4 h-4 text-[#C88A35]" />
-                <span>Chào mừng Quý khách đến với {storeSettings.storeName || 'Quán Nhỏ'}</span>
-              </div>
-
-              <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-[#2D1B14] leading-tight">
-                {storeSettings.customerDisplayWelcomeTitle || 'Hương vị thân quen, Gửi trọn yêu thương'}
-              </h2>
-
-              <p className="text-base text-stone-600 font-medium">
-                {storeSettings.customerDisplaySubtitle ||
-                  'Vui lòng xem menu và gọi món tại quầy. Chúng tôi luôn sẵn sàng phục vụ bạn!'}
-              </p>
-            </div>
-
-            {/* Featured Menu Cards */}
-            {storeSettings.showFeaturedItems !== false && (
-            <div className="w-full max-w-5xl">
-              <div className="flex items-center justify-between mb-4 px-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#7A5A43]">
-                  Món đặc sắc hôm nay:
-                </span>
-                <span className="text-xs text-stone-500 font-medium">Thực đơn tươi mới mỗi ngày</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {FEATURED_ITEMS.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-white rounded-3xl overflow-hidden border border-[#E8DFD5] shadow-md hover:shadow-lg transition flex flex-col group"
-                  >
-                    <div className="h-44 overflow-hidden relative">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                      />
-                      <span className="absolute top-3 left-3 bg-[#2D1B14]/85 backdrop-blur-xs text-[#E09F3E] text-[11px] font-extrabold px-2.5 py-1 rounded-lg">
-                        {item.tag}
-                      </span>
-                    </div>
-
-                    <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
-                      <div>
-                        <h3 className="font-extrabold text-base text-[#2D1B14] line-clamp-1">
-                          {item.name}
-                        </h3>
-                        <p className="text-xs text-stone-500 line-clamp-2 mt-1">{item.desc}</p>
-                      </div>
-
-                      <div className="pt-2 border-t border-[#F5EFEB] flex items-center justify-between">
-                        <span className="text-base font-black text-[#C88A35]">
-                          {formatCurrency(item.price)}
-                        </span>
-                        <span className="text-xs text-stone-500 font-medium">Giá niêm yết</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            )}
-
-            <div className="flex items-center gap-2 text-xs text-stone-500 font-medium">
-              <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-              <span>Cảm ơn Quý khách đã ủng hộ {storeSettings.storeName || 'Quán Nhỏ'}</span>
+              {storeSettings.storeName && (
+                <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-[#2D1B14] leading-tight">
+                  {storeSettings.storeName}
+                </h2>
+              )}
+              <p className="text-base text-stone-600 font-medium">Màn hình sẽ cập nhật khi có giao dịch.</p>
             </div>
           </div>
         )}
@@ -375,7 +268,7 @@ export default function CustomerDisplayPage() {
               <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#E8DFD5] text-xs text-stone-600 space-y-1">
                 <p className="font-bold text-[#2D1B14]">Phương thức thanh toán hỗ trợ:</p>
                 <p>• Tiền mặt tại quầy</p>
-                <p>• Quét mã VietQR chuyển khoản (MB, Vietcombank, Momo, Techcombank...)</p>
+                <p>• Thanh toán tiền mặt tại quầy</p>
               </div>
             </div>
           </div>
@@ -391,22 +284,18 @@ export default function CustomerDisplayPage() {
               <div className="p-5 sm:p-6 bg-[#2D1B14] text-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#C88A35] flex items-center justify-center text-white">
-                    {displayData.paymentMethod === 'TIEN_MAT' ? (
-                      <Banknote className="w-6 h-6" />
-                    ) : (
-                      <QrCode className="w-6 h-6" />
-                    )}
+                    <Banknote className="w-6 h-6" />
                   </div>
                   <div>
                     <h2 className="text-lg sm:text-xl font-black text-[#FDFBF7]">
                       {displayData.paymentMethod === 'TIEN_MAT'
                         ? 'Thanh Toán Tiền Mặt'
-                        : 'Thanh Toán Chuyển Khoản VietQR'}
+                        : 'Chuyển khoản chưa hỗ trợ'}
                     </h2>
                     <p className="text-xs text-[#D4C7B8]">
                       {displayData.paymentMethod === 'TIEN_MAT'
                         ? 'Vui lòng đưa tiền mặt cho nhân viên tại quầy'
-                        : 'Mở ứng dụng ngân hàng và quét mã QR bên dưới'}
+                        : 'Vui lòng chọn thanh toán tiền mặt tại quầy.'}
                     </p>
                   </div>
                 </div>
@@ -455,67 +344,9 @@ export default function CustomerDisplayPage() {
                   </div>
                 )}
 
-                {/* 2. Nhánh Chuyển Khoản VietQR */}
-                {displayData.paymentMethod === 'CHUYEN_KHOAN' && (
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-8 py-2">
-                    {/* Mã QR To Bản */}
-                    <div className="p-4 bg-white rounded-2xl border-2 border-[#C88A35] shadow-md flex flex-col items-center">
-                      {qrCodeUrl ? (
-                        <img
-                          src={qrCodeUrl}
-                          alt="VietQR Quán Nhỏ"
-                          className="w-56 h-56 object-contain rounded-lg"
-                        />
-                      ) : (
-                        <div className="w-56 h-56 bg-stone-100 flex items-center justify-center rounded-lg">
-                          <QrCode className="w-28 h-28 text-stone-400" />
-                        </div>
-                      )}
-                      <div className="text-center mt-2">
-                        <span className="text-[11px] font-bold text-[#2D1B14] uppercase">
-                          VIETQR QUÁN NHỎ
-                        </span>
-                        <div className="text-xs font-black text-[#C88A35]">
-                          {formatCurrency(displayData.totalAmount || 0)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Hướng Dẫn Quét Mã */}
-                    <div className="space-y-4 max-w-sm text-left">
-                      <div className="space-y-1">
-                        <h4 className="text-lg font-black text-[#2D1B14]">Quét Mã Để Thanh Toán</h4>
-                        <p className="text-xs text-stone-600 leading-relaxed">
-                          Mã QR đã gắn sẵn số tiền <strong>{formatCurrency(displayData.totalAmount || 0)}</strong>.
-                          Quý khách chỉ cần mở app Ngân hàng để quét và xác nhận.
-                        </p>
-                      </div>
-
-                      <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#E8DFD5] text-xs space-y-1.5 font-medium">
-                        <div className="flex justify-between">
-                          <span className="text-stone-500">Ngân hàng:</span>
-                          <span className="font-bold text-[#2D1B14]">
-                            {storeSettings.bankName || 'MB Bank'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-stone-500">Chủ tài khoản:</span>
-                          <span className="font-bold text-[#2D1B14]">
-                            {storeSettings.bankAccountName || 'QUAN NHO COFFEE'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-stone-500">Số tài khoản:</span>
-                          <span className="font-bold text-[#2D1B14] font-mono">
-                            {storeSettings.bankAccountNumber || '0901234567'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <p className="text-[11px] text-stone-500 italic">
-                        * Hệ thống sẽ tự động cập nhật ngay khi nhận được thông báo chuyển tiền thành công.
-                      </p>
-                    </div>
+                {displayData.paymentMethod !== 'TIEN_MAT' && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center text-sm font-semibold text-amber-900">
+                    Chuyển khoản chưa được hỗ trợ. Vui lòng chọn thanh toán tiền mặt tại quầy.
                   </div>
                 )}
               </div>
@@ -551,7 +382,7 @@ export default function CustomerDisplayPage() {
                   SỐ PHIẾU NHẬN MÓN
                 </span>
                 <div className="text-5xl sm:text-6xl font-black tracking-tight text-[#2D1B14]">
-                  {displayData.orderNumber || 'QN-101'}
+                {displayData.orderNumber}
                 </div>
                 <p className="text-xs text-[#C88A35] font-bold pt-1">
                   Vui lòng giữ phiếu nhận món và chờ gọi số tại quầy

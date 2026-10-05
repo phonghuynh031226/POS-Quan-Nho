@@ -17,3 +17,11 @@ export function resolveReceiptPrintSettings({
     printType: initialPrintType || settings.defaultPrintMode || 'both',
   }
 }
+
+export function getLatestOrderForPreview(orders = []) {
+  return [...orders]
+    .filter((order) => order?.createdAt || order?.created_at)
+    .sort((left, right) =>
+      new Date(right.createdAt || right.created_at) - new Date(left.createdAt || left.created_at)
+    )[0] || null
+}

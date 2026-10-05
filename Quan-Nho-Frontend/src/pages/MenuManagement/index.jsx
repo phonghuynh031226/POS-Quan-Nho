@@ -18,6 +18,7 @@ import { menuApi } from '../../api/menuApi'
 import { optionGroupApi } from '../../api/optionGroupApi'
 import { formatCurrency } from '../../utils/formatters'
 import { persistMenuItem } from '../../utils/menuItemPersistence'
+import { removeById, upsertById } from '../../utils/catalogCollection'
 import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -83,7 +84,7 @@ export default function MenuManagementPage() {
   const handleToggleAvailability = async (id) => {
     try {
       const updated = await menuApi.toggleAvailability(id)
-      setMenu(updated)
+      setMenu((current) => upsertById(current, updated))
       toast.success('Đã cập nhật trạng thái bán món!')
     } catch (err) {
       toast.error('Lỗi: ' + err.message)
@@ -122,8 +123,11 @@ export default function MenuManagementPage() {
     if (!itemToDelete) return
     setIsDeleting(true)
     try {
-      const updated = await menuApi.deleteItem(itemToDelete.id)
-      setMenu(updated)
+      await menuApi.deleteItem(itemToDelete.id)
+      setMenu((current) => removeById(current, itemToDelete.id))
+      setProductRelations((current) =>
+        current.filter((relation) => String(relation.product_id ?? relation.productId) !== String(itemToDelete.id))
+      )
       toast.success(`Đã xóa món "${itemToDelete.name}" khỏi thực đơn!`)
       setItemToDelete(null)
     } catch (err) {
@@ -134,7 +138,11 @@ export default function MenuManagementPage() {
   }
 
   const handleCategoriesUpdated = (updatedCats) => {
-    setCategories(updatedCats)
+    if (updatedCats?.deletedId != null) {
+      setCategories((current) => removeById(current, updatedCats.deletedId))
+      return
+    }
+    setCategories((current) => upsertById(current, updatedCats))
   }
 
   const filteredItems = menu.filter((item) => {
@@ -409,7 +417,13 @@ export default function MenuManagementPage() {
         isOpen={isToppingModalOpen}
         onClose={() => setIsToppingModalOpen(false)}
         toppings={toppings}
-        onToppingsUpdated={setToppings}
+        onToppingsUpdated={(updatedTopping) => {
+          if (updatedTopping?.deletedId != null) {
+            setToppings((current) => removeById(current, updatedTopping.deletedId))
+            return
+          }
+          setToppings((current) => upsertById(current, updatedTopping))
+        }}
       />
 
       {/* Delete Confirmation Modal */}

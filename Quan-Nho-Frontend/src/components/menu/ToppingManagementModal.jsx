@@ -89,8 +89,8 @@ export default function ToppingManagementModal({
     if (!topToDelete) return
     setIsDeleting(true)
     try {
-      const updated = await menuApi.deleteTopping(topToDelete.id)
-      onToppingsUpdated?.(updated)
+      await menuApi.deleteTopping(topToDelete.id)
+      onToppingsUpdated?.({ deletedId: topToDelete.id })
       toast.success(`Đã xóa topping "${topToDelete.name}"!`)
       setTopToDelete(null)
     } catch (err) {

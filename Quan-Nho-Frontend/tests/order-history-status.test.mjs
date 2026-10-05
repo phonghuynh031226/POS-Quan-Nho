@@ -17,6 +17,16 @@ test('order history presents the counter pickup workflow and real transition act
   assert.doesNotMatch(code, /Chờ làm|Sẵn sàng|Đã giao/)
 })
 
+test('order history announces the 30-minute timeout and refreshes while new orders remain', async () => {
+  const code = await readFile(historyUrl, 'utf8')
+
+  assert.match(code, /tự hủy sau 30 phút/i)
+  assert.match(code, /fulfillmentStatus === 'NEW'/)
+  assert.match(code, /setInterval\(loadOrders, 60_000\)/)
+  assert.match(code, /cancelReason \|\| viewingOrder\.cancel_reason/)
+  assert.match(code, /Chưa ghi nhận hoàn tiền/)
+})
+
 test('shared badge uses fulfillment-specific status metadata', async () => {
   const code = await readFile(badgeUrl, 'utf8')
 
@@ -24,17 +34,19 @@ test('shared badge uses fulfillment-specific status metadata', async () => {
   assert.match(code, /config = FULFILLMENT_STATUS\[statusKey\]/)
 })
 
-test('reports and integration guide use the persisted pickup status contract', async () => {
-  const [reportApi, reportsPage, guide] = await Promise.all([
+test('reports and backend use the persisted pickup status contract', async () => {
+  const [reportApi, reportsPage, orderController] = await Promise.all([
     readFile(new URL('../src/api/reportApi.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/pages/Reports/index.jsx', import.meta.url), 'utf8'),
-    readFile(new URL('../src/api/springBootGuide.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../Quan-Nho-Backend/src/main/java/com/quannho/pos/order/OrderController.java', import.meta.url), 'utf8'),
   ])
 
   assert.doesNotMatch(reportApi, /fulfillmentStatus === 'DA_HUY'/)
   assert.doesNotMatch(reportsPage, /fulfillmentStatus === 'DA_HUY'/)
   assert.match(reportApi, /fulfillmentStatus === 'CANCELLED'/)
   assert.match(reportsPage, /fulfillmentStatus === 'CANCELLED'/)
-  assert.match(guide, /Body: \{ "status": "PREPARING" \| "READY_FOR_PICKUP" \| "COMPLETED" \}/)
-  assert.doesNotMatch(guide, /DANG_LAM|SAN_SANG|DA_GIAO/)
+  assert.match(orderController, /FulfillmentStatus\.PREPARING/)
+  assert.match(orderController, /FulfillmentStatus\.READY_FOR_PICKUP/)
+  assert.match(orderController, /FulfillmentStatus\.COMPLETED/)
+  assert.doesNotMatch(orderController, /FulfillmentStatus\.DANG_LAM|FulfillmentStatus\.SAN_SANG|FulfillmentStatus\.DA_GIAO/)
 })

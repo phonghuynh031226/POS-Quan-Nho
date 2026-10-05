@@ -36,7 +36,7 @@ export default function PaymentModal({
 }) {
   const { currentUser } = useAuth()
   const toast = useToast()
-  const storeSettings = DEFAULT_STORE_SETTINGS
+  const [storeSettings, setStoreSettings] = useState(DEFAULT_STORE_SETTINGS)
 
   const totalAmount = cart.reduce((sum, i) => sum + i.lineTotal, 0)
 
@@ -67,6 +67,7 @@ export default function PaymentModal({
     if (isOpen) {
       const currentSettings = DEFAULT_STORE_SETTINGS
       settingsApi.getSettings().then((saved) => {
+        setStoreSettings(saved)
         setAutoPrint(saved.autoOpenPrint ?? true)
         setDefaultPrintType(saved.defaultPrintMode || 'both')
       }).catch(() => {})
@@ -738,7 +739,7 @@ export default function PaymentModal({
                       <span className="px-1.5 py-0.5 rounded bg-[#C88A35] text-white text-[10px] font-black uppercase">
                         VietQR
                       </span>
-                      <span>Mã Quán Nhỏ</span>
+                      <span>Mã thanh toán</span>
                     </div>
                     <button
                       type="button"
@@ -758,8 +759,8 @@ export default function PaymentModal({
                     <div className="w-48 h-48 sm:w-52 sm:h-52 bg-white rounded-xl flex items-center justify-center p-2 relative overflow-hidden border border-stone-200">
                       <img
                         src={`https://img.vietqr.io/image/${
-                          storeSettings?.bankName?.includes('MB') ? 'MB' : 'VCB'
-                        }-${storeSettings?.bankAccountNumber || '0901234567'}-qr_only.png?amount=${totalAmount}&addInfo=${encodeURIComponent(
+                          storeSettings?.bankName?.includes('MB') ? 'MB' : (storeSettings?.bankName || '')
+                        }-${storeSettings?.bankAccountNumber || ''}-qr_only.png?amount=${totalAmount}&addInfo=${encodeURIComponent(
                           transferContentCode
                         )}`}
                         alt="Mã VietQR"
@@ -777,7 +778,7 @@ export default function PaymentModal({
                       >
                         <QrCode className="w-28 h-28 text-[#3E2723] mb-1" />
                         <span className="text-[9px] font-bold text-stone-600 uppercase">
-                          VietQR Quán Nhỏ
+                          VietQR
                         </span>
                       </div>
                     </div>
@@ -800,7 +801,7 @@ export default function PaymentModal({
                   <div className="flex items-center justify-between text-[11px] text-stone-600 font-medium">
                     <span>Ngân hàng:</span>
                     <span className="font-bold text-[#2D1B14]">
-                      {storeSettings?.bankName || 'MB Bank'} • {storeSettings?.bankAccountNumber || '0901234567'}
+                      {storeSettings?.bankName || ''}{storeSettings?.bankAccountNumber ? ` • ${storeSettings.bankAccountNumber}` : ''}
                     </span>
                   </div>
 
@@ -867,7 +868,7 @@ export default function PaymentModal({
                             Đã nhận đủ {formatCurrency(totalAmount)}
                           </p>
                           <p className="text-[11px] text-emerald-700">
-                            Mã GD: {transferTxId || `SP${Date.now().toString().slice(-6)}`} • Đã khớp tài khoản quán
+                            {transferTxId && `Mã GD: ${transferTxId}`}
                           </p>
                         </div>
                       </div>
@@ -1064,14 +1065,14 @@ export default function PaymentModal({
               <span className="px-2 py-0.5 rounded bg-[#C88A35] text-white text-xs font-black uppercase">
                 VietQR
               </span>
-              <span className="font-bold text-sm text-[#2D1B14]">Quán Nhỏ • Quét Mã</span>
+              <span className="font-bold text-sm text-[#2D1B14]">Quét mã thanh toán</span>
             </div>
 
             <div className="p-3 bg-[#FAF7F2] rounded-2xl border-2 border-[#C88A35] shadow-sm">
               <img
                 src={`https://img.vietqr.io/image/${
-                  storeSettings?.bankName?.includes('MB') ? 'MB' : 'VCB'
-                }-${storeSettings?.bankAccountNumber || '0901234567'}-qr_only.png?amount=${totalAmount}&addInfo=${encodeURIComponent(
+                  storeSettings?.bankName?.includes('MB') ? 'MB' : (storeSettings?.bankName || '')
+                }-${storeSettings?.bankAccountNumber || ''}-qr_only.png?amount=${totalAmount}&addInfo=${encodeURIComponent(
                   transferContentCode
                 )}`}
                 alt="Mã VietQR Phóng To"

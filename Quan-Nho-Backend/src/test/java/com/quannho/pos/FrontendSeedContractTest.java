@@ -51,25 +51,17 @@ class FrontendSeedContractTest {
     }
 
     @Test
-    void menuSeedMatchesFrontendCountsAndImportantDefaults() {
-        assertEquals(11, matches(section("JOIN (VALUES", ") AS p(category_code"), "\\('[A-Z_]+', '[A-Z_]+',"));
-        assertEquals(22, matches(section("INSERT INTO option_values", ") AS v(group_code"), "\\('[A-Z_]+', '[A-Z_0-9]+',"));
-        assertEquals(33, matches(section("INSERT INTO product_option_groups", ") AS r(product_code"), "\\('[A-Z_0-9]+', '[A-Z_]+',"));
-        assertTrue(SQL.contains("('SIZE', 'SIZE_S', 'Size S', 0, TRUE"));
-        assertTrue(SQL.contains("('SIZE', 'SIZE_M', 'Size M', 6000, FALSE"));
-        assertTrue(SQL.contains("'TRA_SUA_O_LONG', 'Trà sữa Ô long nướng', 42000"));
-        assertFalse(section("INSERT INTO products", "INSERT INTO option_groups").contains("'TRA_SUA_O_LONG', 'Trà sữa Ô long nướng', 42000,\n     'https://images.unsplash.com/photo-1558857563-b371033873b8?w=500&auto=format&fit=crop&q=60', FALSE"));
+    void schemaScriptDoesNotInsertSampleRows() {
+        assertFalse(Pattern.compile("(?im)^\\s*INSERT\\s+INTO\\s+(users|categories|products|option_groups|option_values|product_option_groups|orders|order_items|order_item_options|shop_settings|sepay_settings)\\b")
+                .matcher(SQL).find());
     }
 
     @Test
-    void demoOrdersPreserveFrontendTotalsAndTokens() {
-        assertTrue(SQL.contains("'QN-000001'"));
-        assertTrue(SQL.contains("'demo001tok'"));
-        assertTrue(SQL.contains("64000"));
-        assertTrue(SQL.contains("'QN-000002'"));
-        assertTrue(SQL.contains("'demo002tok'"));
-        assertTrue(SQL.contains("76000"));
-        assertTrue(SQL.contains("'Cà phê & Đồ ăn vặt'"));
-        assertTrue(SQL.contains("'090 123 4567'"));
+    void schemaScriptDoesNotContainDemoCredentialsOrOrders() {
+        assertFalse(SQL.contains("admin / 123456"));
+        assertFalse(SQL.contains("demo001tok"));
+        assertFalse(SQL.contains("demo002tok"));
+        assertFalse(SQL.contains("QN-000001"));
+        assertFalse(SQL.contains("QN-000002"));
     }
 }

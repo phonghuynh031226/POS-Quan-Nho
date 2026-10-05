@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { resolveReceiptPrintSettings } from '../src/utils/receiptPrintSettings.js'
+import { getLatestOrderForPreview, resolveReceiptPrintSettings } from '../src/utils/receiptPrintSettings.js'
+
+test('test print selects the latest persisted order without mutating API results', () => {
+  const orders = [
+    { id: 1, createdAt: '2026-10-01T10:00:00+07:00' },
+    { id: 2, createdAt: '2026-10-02T10:00:00+07:00' },
+  ]
+
+  assert.equal(getLatestOrderForPreview(orders).id, 2)
+  assert.equal(orders[0].id, 1)
+  assert.equal(getLatestOrderForPreview([]), null)
+})
 
 test('test-print values override saved settings without requiring a save', () => {
   const result = resolveReceiptPrintSettings({

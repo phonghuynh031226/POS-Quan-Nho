@@ -21,6 +21,7 @@ import {
 import { reportApi } from '../../api/reportApi'
 import { settingsApi } from '../../api/settingsApi'
 import { formatCurrency, formatDateTime } from '../../utils/formatters'
+import { formatLocalDate, parseLocalDate } from '../../utils/localDate'
 import {
   buildReportFilename,
   buildReportWorkbook,
@@ -32,9 +33,9 @@ import ReceiptModal from '../../components/print/ReceiptModal'
 import { useToast } from '../../context/ToastContext'
 
 export default function ReportsPage() {
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), [])
-  const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), [])
-  const currentYearStr = useMemo(() => String(new Date().getFullYear()), [])
+  const todayStr = useMemo(() => formatLocalDate(new Date()), [])
+  const currentMonthStr = useMemo(() => todayStr.slice(0, 7), [todayStr])
+  const currentYearStr = useMemo(() => todayStr.slice(0, 4), [todayStr])
 
   // Period mode: 'day' | 'week' | 'month' | 'year' | 'custom'
   const [periodType, setPeriodType] = useState('day')
@@ -85,9 +86,9 @@ export default function ReportsPage() {
 
     if (periodType === 'day' || periodType === 'week') {
       const daysToAdd = periodType === 'week' ? delta * 7 : delta
-      const d = new Date(selectedDate)
+      const d = parseLocalDate(selectedDate)
       d.setDate(d.getDate() + daysToAdd)
-      setSelectedDate(d.toISOString().slice(0, 10))
+      setSelectedDate(formatLocalDate(d))
     } else if (periodType === 'month') {
       const [y, m] = selectedMonth.split('-').map(Number)
       const newD = new Date(y, m - 1 + delta, 1)
@@ -102,8 +103,8 @@ export default function ReportsPage() {
   const handleExportExcel = async () => {
     if (!stats) return
     try {
-      const settings = await settingsApi.getSettings().catch(() => ({ storeName: 'Quán Nhỏ' }))
-      const shopName = settings.storeName || settings.shop_name || 'Quán Nhỏ'
+      const settings = await settingsApi.getSettings().catch(() => ({}))
+      const shopName = settings.storeName || settings.shop_name || ''
       const workbook = buildReportWorkbook({ shopName, stats })
       const filename = buildReportFilename({
         shopName,
@@ -394,7 +395,7 @@ export default function ReportsPage() {
                 <ShoppingBag className="w-4 h-4 text-[#C88A35]" />
               </div>
               <div className="text-2xl sm:text-3xl font-black text-[#2D1B14]">
-                {stats.totalItemsSold}{' '}
+                {stats.totalItemsServed}{' '}
                 <span className="text-sm font-semibold text-stone-500">ly/phần</span>
               </div>
               <p className="text-[11px] text-stone-500">Tổng sản phẩm đã chế biến & giao</p>
@@ -855,12 +856,12 @@ export default function ReportsPage() {
                   </span>
                   <div className="text-xl sm:text-2xl font-black text-emerald-700">
                     {stats.totalOrdersCount > 0
-                      ? Math.round((stats.paidOrdersCount / stats.totalOrdersCount) * 100)
+                      ? Math.round((stats.completedOrdersCount / stats.totalOrdersCount) * 100)
                       : 100}
                     %
                   </div>
                   <span className="text-[10px] text-stone-400">
-                    {stats.paidOrdersCount} / {stats.totalOrdersCount} đơn thành công
+                    {stats.completedOrdersCount} / {stats.totalOrdersCount} đơn đã giao
                   </span>
                 </div>
 
@@ -893,7 +894,7 @@ export default function ReportsPage() {
                     )}
                   </div>
                   <span className="text-[10px] text-stone-400">
-                    Trên {stats.totalItemsSold} ly/món phục vụ
+                    Trên {stats.totalItemsSold} ly/món đã bán
                   </span>
                 </div>
 

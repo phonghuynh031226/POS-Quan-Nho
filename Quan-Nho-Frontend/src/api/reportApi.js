@@ -1,21 +1,20 @@
 import { orderApi } from './orderApi.js'
 import { summarizeCancellationLoss } from '../utils/cancellationLoss.js'
+import { addLocalDays, formatLocalDate } from '../utils/localDate.js'
 
 const delay = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function getStartOfWeek(dateStr) {
-  const d = new Date(dateStr)
+  const d = new Date(`${dateStr}T12:00:00`)
   const day = d.getDay()
   // Adjust so Monday is 0, Sunday is 6
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   const monday = new Date(d.setDate(diff))
-  return monday.toISOString().slice(0, 10)
+  return formatLocalDate(monday)
 }
 
 function addDays(dateStr, days) {
-  const d = new Date(dateStr)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  return addLocalDays(dateStr, days)
 }
 
 export const reportApi = {
@@ -33,7 +32,7 @@ export const reportApi = {
     await delay(150)
     const allOrders = await orderApi.getOrders()
     const periodType = options.periodType || 'day'
-    const todayStr = new Date().toISOString().slice(0, 10)
+    const todayStr = formatLocalDate(new Date())
 
     let fromDate = options.fromDate
     let toDate = options.toDate
@@ -155,6 +154,9 @@ export const reportApi = {
     })
 
     const paidOrders = orders.filter((o) => o.paymentStatus === 'DA_THANH_TOAN' || o.payment_status === 'PAID')
+    const completedOrders = paidOrders.filter(
+      (o) => (o.fulfillmentStatus || o.fulfillment_status) === 'COMPLETED'
+    )
     const cancelledOrders = orders.filter(
       (o) =>
         o.fulfillmentStatus === 'CANCELLED' ||
@@ -175,6 +177,7 @@ export const reportApi = {
     let cashCount = 0
     let transferCount = 0
     let totalItemsSold = 0
+    let totalItemsServed = 0
 
     orders.forEach((o) => {
       const isPaid = o.paymentStatus === 'DA_THANH_TOAN' || o.payment_status === 'PAID'
@@ -247,6 +250,7 @@ export const reportApi = {
         itemMap[itemName].totalQuantity += qty
         itemMap[itemName].totalSales += sales
         totalItemsSold += qty
+        if (completedOrders.includes(order)) totalItemsServed += qty
       })
     })
 
@@ -266,6 +270,7 @@ export const reportApi = {
       date: options.date || todayStr,
       totalOrdersCount: orders.length,
       paidOrdersCount: paidOrders.length,
+      completedOrdersCount: completedOrders.length,
       cancelledOrdersCount: cancelledOrders.length,
       noMaterialLossCancellationCount,
       fullOrderLossCancellationCount,
@@ -275,6 +280,7 @@ export const reportApi = {
       netRevenue,
       averageOrderValue,
       totalItemsSold,
+      totalItemsServed,
       cashRevenue,
       cashCount,
       transferRevenue,
@@ -291,7 +297,7 @@ export const reportApi = {
   async getDailyStats(selectedDate = null) {
     return this.getStats({
       periodType: 'day',
-      date: selectedDate || new Date().toISOString().slice(0, 10),
+      date: selectedDate || formatLocalDate(new Date()),
     })
   },
 }

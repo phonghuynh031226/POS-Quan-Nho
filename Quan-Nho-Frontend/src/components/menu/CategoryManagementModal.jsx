@@ -12,6 +12,7 @@ import {
 import Modal from '../common/Modal'
 import Button from '../common/Button'
 import { menuApi } from '../../api/menuApi'
+import { countCategoryProducts } from '../../utils/catalogCollection'
 import { useToast } from '../../context/ToastContext'
 
 export default function CategoryManagementModal({
@@ -33,6 +34,7 @@ export default function CategoryManagementModal({
   const [isDeleting, setIsDeleting] = useState(false)
 
   const toast = useToast()
+  const catProductCount = catToDelete ? countCategoryProducts(menuItems, catToDelete.id) : 0
 
   const handleAddCategory = async (e) => {
     e?.preventDefault()
@@ -84,8 +86,8 @@ export default function CategoryManagementModal({
     if (!catToDelete) return
     setIsDeleting(true)
     try {
-      const updated = await menuApi.deleteCategory(catToDelete.id)
-      onCategoriesUpdated?.(updated)
+      await menuApi.deleteCategory(catToDelete.id)
+      onCategoriesUpdated?.({ deletedId: catToDelete.id })
       toast.success(`Đã xóa danh mục "${catToDelete.name}"!`)
       setCatToDelete(null)
     } catch (err) {
@@ -232,11 +234,9 @@ export default function CategoryManagementModal({
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div>
                 Bạn có chắc chắn muốn xóa danh mục <strong>"{catToDelete.name}"</strong>?
-                {menuItems.filter((m) => m.category === catToDelete.id).length > 0 && (
+                {catProductCount > 0 && (
                   <div className="mt-1 text-rose-700 font-semibold">
-                    Lưu ý: Có{' '}
-                    {menuItems.filter((m) => m.category === catToDelete.id).length} món đang thuộc
-                    danh mục này!
+                    Không thể xóa vì có {catProductCount} món đang thuộc danh mục này.
                   </div>
                 )}
               </div>
@@ -252,8 +252,8 @@ export default function CategoryManagementModal({
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-xs cursor-pointer"
+                disabled={isDeleting || catProductCount > 0}
+                className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-xs cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isDeleting ? 'Đang xóa...' : 'Xác nhận xóa'}
               </button>

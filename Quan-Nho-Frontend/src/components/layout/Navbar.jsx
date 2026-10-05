@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   Coffee,
@@ -11,10 +12,22 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { ROLES } from '../../constants'
+import { settingsApi } from '../../api/settingsApi'
 
 export default function Navbar() {
   const { currentUser, logout } = useAuth()
   const navigate = useNavigate()
+  const [shopName, setShopName] = useState('')
+
+  useEffect(() => {
+    settingsApi.getPublicShopInfo()
+      .then((data) => {
+        if (data?.shop_name) {
+          setShopName(data.shop_name)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const handleLogout = async () => {
     await logout()
@@ -67,8 +80,8 @@ export default function Navbar() {
               <Coffee className="w-5 h-5" />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm sm:text-base tracking-tight text-[#FDFBF7] whitespace-nowrap">
-                QUÁN NHỎ
+              <span className="font-extrabold text-sm sm:text-base tracking-tight text-[#FDFBF7] whitespace-nowrap uppercase">
+                {shopName}
               </span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-[#4A2E20] text-[#E09F3E]">
                 POS

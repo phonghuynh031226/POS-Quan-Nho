@@ -46,7 +46,8 @@ public class SecurityConfig {
         http.securityContext(context -> context.securityContextRepository(repository));
         http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/csrf", "/api/auth/me").permitAll()
+                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/csrf", "/api/auth/me", "/api/settings/shop/public").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll());
         http.exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, error) ->

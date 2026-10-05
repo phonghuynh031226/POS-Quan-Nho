@@ -64,7 +64,7 @@ export default function ReceiptModal({
 
   const handlePrint = async () => {
     try {
-      if (isReprint && order.id && order.id !== 99999) {
+      if (isReprint && order.id) {
         await orderApi.markReprint(order.id).catch(() => {})
       }
       toast.info('Đang mở hộp thoại in...')
@@ -116,13 +116,15 @@ export default function ReceiptModal({
       {/* Store Header */}
       <div className="text-center space-y-1 pb-3 border-b border-dashed border-stone-400">
         <h2 className="text-base font-extrabold uppercase tracking-wider">
-          {storeSettings.shop_name || storeSettings.storeName || 'QUÁN NHỎ'}
+          {storeSettings.shop_name || storeSettings.storeName}
         </h2>
         {storeSettings.storeSubtitle && (
           <p className="text-[11px] text-stone-600">{storeSettings.storeSubtitle}</p>
         )}
-        <p className="text-[10px] text-stone-500">Đ/c: {storeSettings.shop_address || storeSettings.address || '123 Nguyễn Văn A'}</p>
-        <p className="text-[10px] text-stone-500">Hotline: {storeSettings.phone || '090 123 4567'}</p>
+        {(storeSettings.shop_address || storeSettings.address) && (
+          <p className="text-[10px] text-stone-500">Đ/c: {storeSettings.shop_address || storeSettings.address}</p>
+        )}
+        {storeSettings.phone && <p className="text-[10px] text-stone-500">Hotline: {storeSettings.phone}</p>}
         {(storeSettings.show_wifi_on_receipt !== false && (storeSettings.wifi_name || storeSettings.wifiName)) && (
           <p className="text-[9px] text-stone-400 font-mono">
             Wi-Fi: {storeSettings.wifi_name || storeSettings.wifiName} {(storeSettings.wifi_password_encrypted || storeSettings.wifiPass) ? `| Pass: ${storeSettings.wifi_password_encrypted || storeSettings.wifiPass}` : ''}
@@ -152,7 +154,7 @@ export default function ReceiptModal({
         </div>
         <div className="flex justify-between">
           <span>Thu ngân:</span>
-          <span>{order.createdBy || 'Chủ quán'}</span>
+          <span>{order.createdBy}</span>
         </div>
         <div className="flex justify-between">
           <span>Hình thức:</span>
@@ -229,7 +231,7 @@ export default function ReceiptModal({
       </div>
 
       <p className="text-[10px] text-stone-600 pt-3 text-center font-semibold">
-        {storeSettings.receipt_message || storeSettings.receiptFooterMessage || 'Cảm ơn Quý khách! Vui lòng giữ phiếu để nhận món.'}
+        {storeSettings.receipt_message || storeSettings.receiptFooterMessage}
       </p>
     </div>
   )
@@ -246,7 +248,7 @@ export default function ReceiptModal({
           Giờ vào đơn: <strong>{formatDateTime(order.createdAt || order.created_at)}</strong>
         </p>
         <p className="text-[10px] text-stone-500">
-          Người tạo: <strong>{order.createdBy || 'Chủ quán'}</strong>
+          Người tạo: <strong>{order.createdBy}</strong>
         </p>
       </div>
 

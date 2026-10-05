@@ -57,8 +57,8 @@ export function buildReportFilename({
     periodLabel = `Ngày ${formatDatePart(selectedDate || fromDate)}`
   }
 
-  const safeShopName = sanitizeFilenamePart(shopName, 'Quán Nhỏ')
-  return `Báo cáo doanh thu - ${safeShopName} - ${periodLabel}.xlsx`
+  const safeShopName = shopName ? sanitizeFilenamePart(shopName, '') : ''
+  return `Báo cáo doanh thu${safeShopName ? ` - ${safeShopName}` : ''} - ${periodLabel}.xlsx`
 }
 
 const getOrderPaymentMethod = (order) =>
@@ -100,10 +100,10 @@ const applyTableBorders = (worksheet, range) => {
   }
 }
 
-export function buildReportWorkbook({ shopName = 'Quán Nhỏ', stats, exportedAt = new Date() }) {
+export function buildReportWorkbook({ shopName = '', stats, exportedAt = new Date() }) {
   const workbook = XLSX.utils.book_new()
   const summaryRows = [
-    [`BÁO CÁO DOANH THU & KINH DOANH - ${shopName.toUpperCase()}`],
+    [`BÁO CÁO DOANH THU & KINH DOANH${shopName ? ` - ${shopName.toUpperCase()}` : ''}`],
     ['Kỳ báo cáo:', stats.label || ''],
     ['Thời gian xuất:', exportedAt.toLocaleString('vi-VN')],
     [],
@@ -112,9 +112,9 @@ export function buildReportWorkbook({ shopName = 'Quán Nhỏ', stats, exportedA
     ['Tổng doanh thu gộp', Number(stats.totalGrossRevenue || 0)],
     ['Tiền hoàn hủy đơn', Number(stats.totalRefundAmount || 0)],
     ['Tổng số đơn', Number(stats.totalOrdersCount || 0)],
-    ['Đơn thành công', Number(stats.paidOrdersCount || 0)],
+    ['Đơn đã thanh toán', Number(stats.paidOrdersCount || 0)],
     ['Giá trị trung bình đơn (AOV)', Number(stats.averageOrderValue || 0)],
-    ['Tổng số phần món phục vụ', Number(stats.totalItemsSold || 0)],
+    ['Tổng số phần món đã giao', Number(stats.totalItemsServed || 0)],
     ['Doanh thu tiền mặt', Number(stats.cashRevenue || 0)],
     ['Doanh thu chuyển khoản VietQR', Number(stats.transferRevenue || 0)],
     ['Đơn hủy không hao hụt', Number(stats.noMaterialLossCancellationCount || 0)],

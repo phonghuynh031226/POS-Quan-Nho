@@ -26,13 +26,13 @@ test('Router registers /display as a public customer facing display route', asyn
   assert.match(routesCode, /path:\s*'\/customer-display'/)
 })
 
-test('CustomerDisplayPage implements the full 5-step customer workflow', async () => {
+test('CustomerDisplayPage reflects live order state without advertising unavailable or sample data', async () => {
   const code = await readFile(customerDisplayPath, 'utf8')
 
   // 1. Màn hình chờ (Idle)
   assert.match(code, /DISPLAY_STATES\.IDLE/)
-  assert.match(code, /Chào mừng Quý khách đến với/i)
-  assert.match(code, /Món đặc sắc/i)
+  assert.match(code, /Màn hình sẽ cập nhật khi có giao dịch/i)
+  assert.match(code, /getPublicShopInfo/)
 
   // 2. Hiển thị danh sách món & Tổng tiền (Ordering)
   assert.match(code, /DISPLAY_STATES\.ORDERING/)
@@ -46,10 +46,9 @@ test('CustomerDisplayPage implements the full 5-step customer workflow', async (
   assert.match(code, /Tiền khách đưa/i)
   assert.match(code, /Tiền thối lại/i)
 
-  // 3. Thanh toán Chuyển khoản VietQR (Transfer)
-  assert.match(code, /Thanh Toán Chuyển Khoản VietQR/i)
-  assert.match(code, /VIETQR QUÁN NHỎ/i)
-  assert.match(code, /Quét Mã Để Thanh Toán/i)
+  // Transfers are not supported by the order API; the display must not advertise them.
+  assert.doesNotMatch(code, /VIETQR QUÁN NHỎ|Quét Mã Để Thanh Toán|bankAccountNumber/i)
+  assert.match(code, /Chuyển khoản chưa hỗ trợ/i)
 
   // 4. Thanh toán thành công (Success) & 5. Trở về màn hình chờ
   assert.match(code, /DISPLAY_STATES\.SUCCESS/)

@@ -22,7 +22,7 @@ import {
 import { orderApi } from '../../api/orderApi'
 import { formatCurrency, formatDateTime, formatTime } from '../../utils/formatters'
 import { canCancelOrder, getNextFulfillmentAction } from '../../utils/orderActions'
-import { getCancellationLossPreview } from '../../utils/cancellationLoss'
+import { getCancellationLossPreview, sumRefundAmounts } from '../../utils/cancellationLoss'
 import { PAYMENT_STATUS, PAYMENT_METHOD } from '../../constants'
 import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
@@ -43,7 +43,6 @@ const STATUS_TABS = [
 ]
 
 export default function OrderHistoryPage() {
-  const [orders, setOrders] = useState([])
   const [allOrders, setAllOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -65,16 +64,8 @@ export default function OrderHistoryPage() {
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const [filteredData, allData] = await Promise.all([
-        orderApi.getOrders({
-          search: searchQuery,
-          fulfillmentStatus: statusFilter,
-          date: selectedDate,
-        }),
-        orderApi.getOrders(),
-      ])
-      setOrders(filteredData || [])
-      setAllOrders(allData || [])
+      const data = await orderApi.getOrders()
+      setAllOrders(data || [])
     } catch (err) {
       toast.error('Lỗi tải lịch sử đơn: ' + err.message)
     } finally {
@@ -84,11 +75,61 @@ export default function OrderHistoryPage() {
 
   useEffect(() => {
     loadOrders()
-  }, [statusFilter, selectedDate])
+  }, [])
+
+  useEffect(() => {
+    if (!allOrders.some((order) => order.fulfillmentStatus === 'NEW')) return undefined
+    const refreshId = window.setInterval(loadOrders, 60_000)
+    return () => window.clearInterval(refreshId)
+  }, [allOrders])
+
+  // Realtime Filtered Orders: Lọc tức thì ngay khi gõ phím
+  const orders = useMemo(() => {
+    return allOrders.filter((order) => {
+      // 1. Lọc theo trạng thái đơn hàng
+      if (statusFilter && statusFilter !== 'ALL' && order.fulfillmentStatus !== statusFilter) {
+        return false
+      }
+
+      // 2. Lọc theo ngày
+      if (selectedDate) {
+        const orderDate = String(order.createdAt || '').slice(0, 10)
+        if (orderDate !== selectedDate) return false
+      }
+
+      // 3. Lọc tìm kiếm realtime: mã đơn, tên món, người tạo, ghi chú
+      if (searchQuery && searchQuery.trim()) {
+        const query = searchQuery.trim().toLowerCase()
+        const normalizedQuery = query.replace(/^od[-_ ]?/i, 'qn-')
+        const digitsOnly = query.replace(/\D/g, '')
+
+        const orderNumber = String(order.orderNumber || order.order_code || '').toLowerCase()
+        const orderId = String(order.id || '')
+        const createdBy = String(order.createdBy || order.creator_name || '').toLowerCase()
+        const customerNote = String(order.customerNote || order.customer_note || '').toLowerCase()
+
+        const matchCode =
+          orderNumber.includes(query) ||
+          orderNumber.includes(normalizedQuery) ||
+          orderId.includes(query) ||
+          (digitsOnly && orderNumber.replace(/\D/g, '').includes(digitsOnly))
+        const matchCreator = createdBy.includes(query)
+        const matchNote = customerNote.includes(query)
+        const matchItems = Array.isArray(order.items) && order.items.some((item) => {
+          const itemName = String(item?.name || item?.product_name || '').toLowerCase()
+          const itemNote = String(item?.notes || item?.customer_note || '').toLowerCase()
+          return itemName.includes(query) || itemNote.includes(query)
+        })
+
+        return matchCode || matchCreator || matchNote || matchItems
+      }
+
+      return true
+    })
+  }, [allOrders, statusFilter, selectedDate, searchQuery])
 
   const handleSearchSubmit = (e) => {
     e?.preventDefault()
-    loadOrders()
   }
 
   // Quick Date Helpers
@@ -108,10 +149,7 @@ export default function OrderHistoryPage() {
     const completedCount = allOrders.filter((o) => o.fulfillmentStatus === 'COMPLETED').length
     const cancelledOrders = allOrders.filter((o) => o.fulfillmentStatus === 'CANCELLED')
     const cancelledCount = cancelledOrders.length
-    const totalRefund = cancelledOrders.reduce(
-      (sum, o) => sum + (Number(o.refundAmount || o.totalAmount) || 0),
-      0
-    )
+    const totalRefund = sumRefundAmounts(cancelledOrders)
     const totalLoss = cancelledOrders.reduce(
       (sum, o) => sum + (Number(o.lossAmount) || 0),
       0
@@ -198,7 +236,7 @@ export default function OrderHistoryPage() {
             </span>
           </div>
           <p className="text-xs text-stone-500 mt-1">
-            Tra cứu đơn hàng, theo dõi phục vụ, in lại hóa đơn pha chế và quản lý hoàn hủy
+            Đơn chưa bắt đầu chế biến sẽ tự hủy sau 30 phút; theo dõi phục vụ, in lại hóa đơn và quản lý hoàn hủy
           </p>
         </div>
 
@@ -358,10 +396,7 @@ export default function OrderHistoryPage() {
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => {
-                  setSearchQuery('')
-                  loadOrders()
-                }}
+                onClick={() => setSearchQuery('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 cursor-pointer"
                 title="Xóa tìm kiếm"
               >
@@ -526,9 +561,11 @@ export default function OrderHistoryPage() {
                     <div className="text-sm font-black text-[#3E2723]">
                       {formatCurrency(order.totalAmount)}
                     </div>
-                    {order.refundAmount > 0 && (
+                    {order.fulfillmentStatus === 'CANCELLED' && (
                       <span className="text-[10px] text-rose-600 font-bold block">
-                        Đã hoàn: {formatCurrency(order.refundAmount)}
+                        {Number(order.refundAmount) > 0
+                          ? `Đã hoàn: ${formatCurrency(order.refundAmount)}`
+                          : 'Chưa ghi nhận hoàn tiền'}
                       </span>
                     )}
                   </div>
@@ -771,9 +808,13 @@ export default function OrderHistoryPage() {
             {viewingOrder.fulfillmentStatus === 'CANCELLED' && (
               <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-900 space-y-1">
                 <div className="font-bold text-xs">Đơn này đã bị hủy</div>
-                <p className="text-xs">Lý do: {viewingOrder.refundReason}</p>
+                <p className="text-xs">
+                  Lý do: {viewingOrder.cancelReason || viewingOrder.cancel_reason || viewingOrder.refundReason || 'Không có thông tin'}
+                </p>
                 <p className="text-xs font-semibold">
-                  Số tiền hoàn: {formatCurrency(viewingOrder.refundAmount)}
+                  {Number(viewingOrder.refundAmount) > 0
+                    ? `Số tiền đã ghi nhận hoàn: ${formatCurrency(viewingOrder.refundAmount)}`
+                    : 'Chưa ghi nhận hoàn tiền'}
                 </p>
                 {viewingOrder.cancellationLossType && (
                   <p className="text-xs font-semibold">

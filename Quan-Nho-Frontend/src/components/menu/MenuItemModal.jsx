@@ -24,73 +24,6 @@ import { formatCurrency } from '../../utils/formatters'
 import { optionGroupApi } from '../../api/optionGroupApi'
 import { menuApi } from '../../api/menuApi'
 
-// Thư viện ảnh mẫu chất lượng cao cho Quán
-const PRESET_IMAGES = [
-  // Cà phê
-  {
-    name: 'Cà phê sữa đá',
-    url: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Bạc xỉu 3 tầng',
-    url: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Cà phê đen phin',
-    url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Cà phê muối béo',
-    url: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Cold Brew cam sả',
-    url: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=500&auto=format&fit=crop&q=60',
-  },
-  // Trà & Thức uống
-  {
-    name: 'Trà đào cam sả',
-    url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Trà vải lài sen',
-    url: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Trà sữa ô long trân châu',
-    url: 'https://images.unsplash.com/photo-1558857563-b371033873b8?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Trà chanh mật ong',
-    url: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Nước ép cam tươi',
-    url: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=500&auto=format&fit=crop&q=60',
-  },
-  // Đồ ăn vặt & Bánh
-  {
-    name: 'Khoai tây chiên giòn',
-    url: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Bánh mì que Hải Phòng',
-    url: 'https://images.unsplash.com/photo-1621852004158-f3bc188ace2d?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Nem chua rán giòn',
-    url: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Khô gà lá chanh',
-    url: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    name: 'Hạt hướng dương rang',
-    url: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=500&auto=format&fit=crop&q=60',
-  },
-]
-
 export default function MenuItemModal({
   isOpen,
   onClose,
@@ -106,8 +39,8 @@ export default function MenuItemModal({
   const [id, setId] = useState('')
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
-  const [category, setCategory] = useState('COFFEE')
-  const [price, setPrice] = useState(30000)
+  const [category, setCategory] = useState('')
+  const [price, setPrice] = useState('')
   const [image, setImage] = useState('')
   const [isImageUploading, setIsImageUploading] = useState(false)
   const [imageUploadError, setImageUploadError] = useState('')
@@ -145,8 +78,8 @@ export default function MenuItemModal({
           c.code === initialItem.category ||
           String(c.id) === String(initialItem.category)
       )
-      setCategory(matchedInitialCat ? matchedInitialCat.id : (initialItem.category_id || initialItem.category || (categories[0]?.id || 'COFFEE')))
-      setPrice(initialItem.base_price || initialItem.price || 30000)
+      setCategory(matchedInitialCat ? matchedInitialCat.id : (initialItem.category_id || initialItem.category || categories[0]?.id || ''))
+      setPrice(initialItem.base_price ?? initialItem.price ?? '')
       setImage(initialItem.image_url || initialItem.image || '')
       setIsAvailable(initialItem.is_available !== false && initialItem.isAvailable !== false)
 
@@ -162,8 +95,8 @@ export default function MenuItemModal({
       setId('')
       setCode('')
       setName('')
-      setCategory(categories[0]?.id || 'COFFEE')
-      setPrice(30000)
+      setCategory(categories[0]?.id || '')
+      setPrice('')
       setImage('')
       setIsAvailable(true)
       setSelectedGroups([])
@@ -254,6 +187,9 @@ export default function MenuItemModal({
     if (!name.trim()) {
       errors.name = 'Vui lòng nhập tên món'
     }
+    if (!category) {
+      errors.category = 'Vui lòng chọn danh mục từ dữ liệu PostgreSQL'
+    }
     if (!price || Number(price) <= 0) {
       errors.price = 'Giá món phải lớn hơn 0 ₫'
     }
@@ -265,7 +201,7 @@ export default function MenuItemModal({
 
     const finalCode = (code.trim() || generateCode(name.trim())).toUpperCase()
     const selectedCatObj = categories.find((c) => String(c.id) === String(category) || c.code === category)
-    const categoryId = selectedCatObj ? Number(selectedCatObj.id) : (Number(category) || 1)
+    const categoryId = selectedCatObj ? Number(selectedCatObj.id) : undefined
 
     const payload = {
       id: id || undefined,
@@ -286,13 +222,7 @@ export default function MenuItemModal({
   }
 
   const currentCategoryObj = categories.find((c) => String(c.id) === String(category) || c.code === category)
-  const categoryName =
-    currentCategoryObj?.name ||
-    (category === 'COFFEE'
-      ? 'Cà phê'
-      : category === 'OTHER_DRINKS'
-      ? 'Trà & Nước khác'
-      : 'Đồ ăn vặt')
+  const categoryName = currentCategoryObj?.name || ''
   const isFoodCategory = currentCategoryObj?.type === 'FOOD' || category === 'SNACKS'
 
   return (
@@ -336,7 +266,7 @@ export default function MenuItemModal({
                     }
                   }}
                   error={formErrors.name}
-                  placeholder="Ví dụ: Cà phê sữa, Trà đào cam sả, Bánh mì que..."
+                  placeholder="Nhập tên món"
                   required
                   autoFocus
                 />
@@ -370,13 +300,10 @@ export default function MenuItemModal({
                             </option>
                           ))
                         ) : (
-                          <>
-                            <option value="COFFEE">Cà phê</option>
-                            <option value="OTHER_DRINKS">Trà & Nước khác</option>
-                            <option value="SNACKS">Đồ ăn vặt</option>
-                          </>
+                          <option value="">Chưa có danh mục trong PostgreSQL</option>
                         )}
                       </select>
+                      {formErrors.category && <p className="mt-1 text-xs text-rose-600">{formErrors.category}</p>}
                     </div>
                   </div>
 
@@ -394,7 +321,7 @@ export default function MenuItemModal({
                     }}
                     onFocus={(e) => e.target.select()}
                     error={formErrors.price}
-                    placeholder="30000"
+                    placeholder="Nhập giá bán"
                     required
                   />
                 </div>

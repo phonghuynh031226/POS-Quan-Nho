@@ -22,12 +22,34 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ROLES } from '../src/constants/index.js'
+import { buildResetShopSettings } from '../src/utils/shopSettings.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const navbarPath = path.resolve(__dirname, '../src/components/layout/Navbar.jsx')
 const routesPath = path.resolve(__dirname, '../src/routes/index.jsx')
 const settingsPagePath = path.resolve(__dirname, '../src/pages/Settings/index.jsx')
 const settingsApiPath = path.resolve(__dirname, '../src/api/settingsApi.js')
+const backendSecurityPath = path.resolve(__dirname, '../../Quan-Nho-Backend/src/main/java/com/quannho/pos/shared/security/SecurityConfig.java')
+
+test('reset keeps required real shop identity while resetting optional settings', () => {
+  const reset = buildResetShopSettings(
+    { storeName: 'Quán Thật', address: 'Địa chỉ thật', phone: '0900000000', wifiName: 'Wifi thật' },
+    { storeName: '', address: '', phone: '', wifiName: '', defaultPrintMode: 'both' }
+  )
+
+  assert.equal(reset.storeName, 'Quán Thật')
+  assert.equal(reset.address, 'Địa chỉ thật')
+  assert.equal(reset.phone, '0900000000')
+  assert.equal(reset.wifiName, '')
+  assert.equal(reset.defaultPrintMode, 'both')
+})
+
+test('only public shop identity is unauthenticated; full settings stay private', async () => {
+  const code = await readFile(backendSecurityPath, 'utf8')
+
+  assert.match(code, /"\/api\/settings\/shop\/public"\)\.permitAll\(\)/)
+  assert.doesNotMatch(code, /requestMatchers\(org\.springframework\.http\.HttpMethod\.GET,\s*"\/api\/settings\/shop"\)\.permitAll\(\)/)
+})
 
 test('settingsApi provides full get, update, and reset operations', async () => {
   const code = await readFile(settingsApiPath, 'utf8')
@@ -77,4 +99,7 @@ test('SettingsPage renders both configuration areas', async () => {
   assert.match(code, /sepayApiKeyInput/)
   assert.match(code, /handleSaveSepayKey/)
   assert.match(code, /sepay_settings/)
+  assert.match(code, /chưa được tích hợp để nhận hoặc đối soát giao dịch/i)
+  assert.doesNotMatch(code, /kích hoạt tính năng tự động nhận diện thanh toán/)
+  assert.doesNotMatch(code, /Đã kết nối:/)
 })

@@ -135,83 +135,34 @@ export const ROLES = {
   },
 }
 
-export const CATEGORIES = [
-  { id: 'ALL', code: 'ALL', name: 'Tất cả món', icon: 'LayoutGrid' },
-  { id: 1, code: 'COFFEE', name: 'Cà phê', icon: 'Coffee', display_order: 1 },
-  { id: 2, code: 'OTHER_DRINKS', name: 'Trà & Nước khác', icon: 'CupSoda', display_order: 2 },
-  { id: 3, code: 'MILK_TEA', name: 'Trà sữa', icon: 'CupSoda', display_order: 3 },
-  { id: 4, code: 'SNACKS', name: 'Đồ ăn vặt', icon: 'Utensils', display_order: 4 },
-  { id: 5, code: 'BAKERY', name: 'Bánh ngọt & Điểm tâm', icon: 'Sparkles', display_order: 5 },
-]
-
-export const DEMO_ACCOUNTS = [
-  {
-    id: 1,
-    username: 'admin',
-    full_name: 'Chủ quán',
-    name: 'Chủ quán',
-    role: 'ADMIN',
-    role_db: 'OWNER',
-    roleName: 'Chủ quán',
-    is_active: true,
-    description: 'Chủ quán (OWNER) - Toàn quyền quản trị bán hàng, thực đơn, cài đặt',
-  },
-]
-
-// Chuẩn bảng shop_settings trong Database (chỉ phục vụ in bill)
-export const DEFAULT_SHOP_SETTINGS = {
-  id: 1,
-  shop_name: 'Quán Nhỏ',
-  shop_address: '123 Nguyễn Văn A',
-  wifi_name: 'QUAN_NHO_WIFI',
-  wifi_password_encrypted: 'quannho888',
-  receipt_message: 'Cảm ơn quý khách, hẹn gặp lại!',
-  show_wifi_on_receipt: true,
-}
-
-// Chuẩn bảng sepay_settings trong Database (chỉ lưu & cấu hình API Key)
-export const DEFAULT_SEPAY_SETTINGS = {
-  id: 1,
-  api_key_encrypted: null,
-  api_key_last4: null,
-  is_configured: false,
-}
-
-// Store settings tổng hợp phục vụ in ấn và hiển thị POS
+// UI preferences use safe behavior defaults; business details come from PostgreSQL.
 export const DEFAULT_STORE_SETTINGS = {
-  // 1. Thông tin chung quán (Map trực tiếp từ shop_settings)
-  storeName: 'Quán Nhỏ',
-  shop_name: 'Quán Nhỏ',
-  storeSubtitle: 'Cà phê & Đồ ăn vặt',
-  address: '123 Nguyễn Văn A',
-  shop_address: '123 Nguyễn Văn A',
-  phone: '090 123 4567',
-  wifiName: 'QUAN_NHO_WIFI',
-  wifi_name: 'QUAN_NHO_WIFI',
-  wifiPass: 'quannho888',
-  wifi_password_encrypted: 'quannho888',
+  storeName: '',
+  shop_name: '',
+  storeSubtitle: '',
+  address: '',
+  shop_address: '',
+  phone: '',
+  wifiName: '',
+  wifi_name: '',
+  wifiPass: '',
+  wifi_password_encrypted: '',
   show_wifi_on_receipt: true,
-  receipt_message: 'Cảm ơn quý khách, hẹn gặp lại!',
-  receiptFooterMessage: 'Cảm ơn quý khách, hẹn gặp lại!',
-
-  // 2. SePay & VietQR
+  receipt_message: '',
+  receiptFooterMessage: '',
   sepay_configured: false,
   sepay_last4: null,
-  bankName: 'MB Bank',
-  bankAccountNumber: '0901234567',
-  bankAccountName: 'QUAN NHO COFFEE',
-  transferContentPrefix: 'QUAN NHO',
-
-  // 3. Cấu hình in hóa đơn
+  bankName: '',
+  bankAccountNumber: '',
+  bankAccountName: '',
+  transferContentPrefix: '',
   defaultPaperSize: '80mm',
   defaultPrintMode: 'both',
   autoOpenPrint: true,
-  kitchenTitle: '*** PHIẾU BÁO CHẾ BIẾN (BẾP / BAR) ***',
+  kitchenTitle: '',
   showQrOnReceipt: true,
-
-  // 4. Màn hình khách (Customer Display)
-  customerDisplayWelcomeTitle: 'Hương vị thân quen, Gửi trọn yêu thương',
-  customerDisplaySubtitle: 'Vui lòng xem menu và gọi món tại quầy. Chúng tôi luôn sẵn sàng phục vụ bạn!',
+  customerDisplayWelcomeTitle: '',
+  customerDisplaySubtitle: '',
   autoResetDelaySeconds: 5,
-  showFeaturedItems: true,
+  showFeaturedItems: false,
 }

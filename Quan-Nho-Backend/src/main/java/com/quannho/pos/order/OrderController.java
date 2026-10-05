@@ -20,7 +20,11 @@ import java.util.UUID;
 @RestController @RequestMapping("/api/orders")
 public class OrderController {
     private final JdbcTemplate jdbc;
-    public OrderController(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final OrderAutoCancellationService autoCancellation;
+    public OrderController(JdbcTemplate jdbc, OrderAutoCancellationService autoCancellation) {
+        this.jdbc = jdbc;
+        this.autoCancellation = autoCancellation;
+    }
 
     @GetMapping public List<Map<String, Object>> all() {
         return jdbc.queryForList("SELECT id FROM orders ORDER BY created_at DESC,id DESC").stream()
@@ -82,7 +86,12 @@ public class OrderController {
                     .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Món không tồn tại"));
             if (!Boolean.TRUE.equals(product.get("is_available")))
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Món đã hết");
-            int quantity = (int) number(item.get("quantity"));
+            int quantity;
+            try {
+                quantity = OrderPricing.quantity(number(item.get("quantity")));
+            } catch (IllegalArgumentException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số lượng món phải là số nguyên dương hợp lệ");
+            }
             List<Choice> choices = choices(productId, item.get("selectedOptions"));
             OrderPricing.Line price = OrderPricing.line(((Number) product.get("base_price")).longValue(),
                     choices.stream().map(Choice::price).toList(), quantity);
@@ -119,6 +128,7 @@ public class OrderController {
     public Map<String, Object> updateFulfillmentStatus(@PathVariable long id,
             @RequestBody Map<String, Object> body) {
         FulfillmentStatus requested = fulfillmentStatus(body.get("status"));
+        autoCancellation.cancelExpiredNewOrder(id);
         String currentValue = jdbc.queryForList("SELECT fulfillment_status FROM orders WHERE id=?", id).stream()
                 .findFirst().map(row -> String.valueOf(row.get("fulfillment_status")))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Đơn không tồn tại"));

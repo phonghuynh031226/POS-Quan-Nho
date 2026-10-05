@@ -18,4 +18,14 @@ class OrderPricingTest {
         assertThrows(IllegalArgumentException.class, () -> OrderPricing.line(-1, List.of(), 1));
         assertThrows(IllegalArgumentException.class, () -> OrderPricing.line(29000, List.of(-1L), 1));
     }
+
+    @Test
+    void acceptsOnlyPositiveQuantitiesThatFitTheDatabaseIntegerColumn() {
+        assertEquals(1, OrderPricing.quantity(1));
+        assertEquals(Integer.MAX_VALUE, OrderPricing.quantity(Integer.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> OrderPricing.quantity(0));
+        assertThrows(IllegalArgumentException.class, () -> OrderPricing.quantity(-1));
+        assertThrows(IllegalArgumentException.class, () -> OrderPricing.quantity((long) Integer.MAX_VALUE + 1));
+        assertThrows(IllegalArgumentException.class, () -> OrderPricing.quantity(4_294_967_297L));
+    }
 }

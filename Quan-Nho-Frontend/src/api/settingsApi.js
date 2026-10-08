@@ -57,4 +57,8 @@ export const settingsApi = {
     const { data } = await apiClient.post('/settings/sepay/key', { apiKey })
     return data
   },
+  async testSepayConnection() {
+    const { data } = await apiClient.post('/settings/sepay/test')
+    return data
+  },
 }

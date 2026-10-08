@@ -46,6 +46,16 @@ public class ShopSettingsController {
                 .stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
+    @PostMapping("/sepay/test") public Map<String, Object> testSepayConnection() {
+        boolean configured = jdbc.queryForList(
+                "SELECT is_configured AND api_key_encrypted IS NOT NULL FROM sepay_settings ORDER BY id LIMIT 1",
+                Boolean.class).stream().findFirst().orElse(false);
+        if (!configured) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "SePay webhook API Key chưa được cấu hình");
+        }
+        return Map.of("success", true, "message", "SePay webhook API Key đã được cấu hình");
+    }
+
     @PostMapping("/sepay/key") public Map<String, Object> saveSepayKey(@RequestBody Map<String, Object> body) {
         String apiKey = String.valueOf(body.getOrDefault("apiKey", "")).trim();
         if (apiKey.isEmpty()) {

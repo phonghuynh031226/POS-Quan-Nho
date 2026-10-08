@@ -40,8 +40,22 @@ export function AuthProvider({ children }) {
     return allowedRoles.includes(currentUser.role)
   }
 
+  const updateCurrentUser = (user) => {
+    setCurrentUser(user)
+  }
+
+  const refreshUser = async () => {
+    try {
+      const user = await authApi.getCurrentSession()
+      if (user) setCurrentUser(user)
+      return user
+    } catch {
+      return null
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ currentUser, loading, login, logout, hasRole }}>
+    <AuthContext.Provider value={{ currentUser, loading, login, logout, hasRole, updateCurrentUser, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

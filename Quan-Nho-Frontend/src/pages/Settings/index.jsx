@@ -17,6 +17,12 @@ import {
   EyeOff,
   ShieldCheck,
   Printer,
+  Copy,
+  User,
+  Mail,
+  Clock,
+  Calendar,
+  History,
 } from 'lucide-react'
 import Button from '../../components/common/Button'
 import Input from '../../components/common/Input'
@@ -25,11 +31,32 @@ import Modal from '../../components/common/Modal'
 import ReceiptModal from '../../components/print/ReceiptModal'
 import { orderApi } from '../../api/orderApi'
 import { settingsApi } from '../../api/settingsApi'
+import { authApi } from '../../api/authApi'
+import { useAuth } from '../../context/AuthContext'
 import { getLatestOrderForPreview } from '../../utils/receiptPrintSettings'
 import { useToast } from '../../context/ToastContext'
 
+function formatDateTime(isoString) {
+  if (!isoString) return 'Chưa ghi nhận'
+  try {
+    const d = new Date(isoString)
+    if (isNaN(d.getTime())) return 'Chưa ghi nhận'
+    return d.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+  } catch {
+    return 'Chưa ghi nhận'
+  }
+}
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('store') // 'store' | 'payment'
+  const { currentUser, updateCurrentUser } = useAuth()
+  const [activeTab, setActiveTab] = useState('store') // 'store' | 'payment' | 'account'
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState(null)
@@ -37,11 +64,45 @@ export default function SettingsPage() {
   const [sepayApiKeyInput, setSepayApiKeyInput] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
   const [savingSepay, setSavingSepay] = useState(false)
+  const [testingSepay, setTestingSepay] = useState(false)
+  const [sepayTestResult, setSepayTestResult] = useState(null)
   const [isResetModalOpen, setIsResetModalOpen] = useState(false)
   const [isTestPrintOpen, setIsTestPrintOpen] = useState(false)
   const [testPrintOrder, setTestPrintOrder] = useState(null)
   const [loadingTestPrint, setLoadingTestPrint] = useState(false)
+
+  // State thông tin cá nhân (Tên, SĐT bắt buộc, Email tùy chọn)
+  const [profileForm, setProfileForm] = useState({
+    fullName: '',
+    phone: '',
+    email: '',
+  })
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [profileError, setProfileError] = useState('')
+
+  // State đổi mật khẩu
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
   const toast = useToast()
+  const apiBaseUrl = new URL(import.meta.env.VITE_API_BASE_URL || '/api', window.location.origin)
+  const sepayWebhookUrl = `${apiBaseUrl.toString().replace(/\/+$/, '')}/webhooks/sepay`
+
+  // Đồng bộ form khi currentUser thay đổi
+  useEffect(() => {
+    if (currentUser) {
+      setProfileForm({
+        fullName: currentUser.fullName || currentUser.name || '',
+        phone: currentUser.phone || currentUser.username || '',
+        email: currentUser.email || '',
+      })
+    }
+  }, [currentUser])
 
   // Load settings on mount
   useEffect(() => {
@@ -137,6 +198,42 @@ export default function SettingsPage() {
     }
   }
 
+  const handleTestSepayConnection = async () => {
+    if (!sepaySettings?.is_configured) {
+      toast.warning('Vui lòng lưu API Key webhook SePay trước khi kiểm tra.')
+      return
+    }
+
+    setSepayTestResult(null)
+    try {
+      setTestingSepay(true)
+      const result = await settingsApi.testSepayConnection()
+      setSepayTestResult({
+        connected: result?.success === true,
+        message: result?.success === true
+          ? 'Kiểm tra thành công: máy chủ đã nhận cấu hình API Key webhook SePay.'
+          : 'Máy chủ chưa xác nhận được cấu hình webhook.',
+      })
+    } catch (err) {
+      const status = err.response?.status
+      const message = status === 503
+        ? 'Máy chủ chưa có API Key webhook SePay đã lưu.'
+        : 'Không thể kiểm tra cấu hình trên máy chủ. Hãy thử lại.'
+      setSepayTestResult({ connected: false, message })
+    } finally {
+      setTestingSepay(false)
+    }
+  }
+
+  const handleCopySepayWebhookUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(sepayWebhookUrl)
+      toast.success('Đã sao chép URL nhận webhook SePay.')
+    } catch {
+      toast.error('Không thể sao chép URL webhook. Bạn có thể chọn và sao chép thủ công.')
+    }
+  }
+
   const handleConfirmReset = async () => {
     try {
       setSaving(true)
@@ -151,6 +248,81 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSaveProfile = async (e) => {
+    e?.preventDefault()
+    setProfileError('')
+
+    if (!profileForm.fullName.trim()) {
+      setProfileError('Vui lòng nhập họ và tên chủ quán')
+      return
+    }
+    if (!profileForm.phone.trim()) {
+      setProfileError('Vui lòng nhập số điện thoại đăng nhập (bắt buộc)')
+      return
+    }
+
+    try {
+      setSavingProfile(true)
+      const updatedUser = await authApi.updateProfile({
+        fullName: profileForm.fullName.trim(),
+        phone: profileForm.phone.trim(),
+        email: profileForm.email.trim() || null,
+      })
+      if (updateCurrentUser) {
+        updateCurrentUser(updatedUser)
+      }
+      toast.success('Đã cập nhật thông tin tài khoản thành công!')
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Cập nhật thông tin thất bại. Vui lòng kiểm tra lại.'
+      setProfileError(msg)
+      toast.error(msg)
+    } finally {
+      setSavingProfile(false)
+    }
+  }
+
+  const handleChangePassword = async (e) => {
+    e?.preventDefault()
+    setPasswordError('')
+
+    if (!currentPassword) {
+      setPasswordError('Vui lòng nhập mật khẩu hiện tại')
+      return
+    }
+    if (!newPassword) {
+      setPasswordError('Vui lòng nhập mật khẩu mới')
+      return
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự')
+      return
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError('Mật khẩu mới không được trùng với mật khẩu hiện tại')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Mật khẩu xác nhận không trùng khớp')
+      return
+    }
+
+    try {
+      setChangingPassword(true)
+      await authApi.changePassword(currentPassword, newPassword)
+      toast.success('Đổi mật khẩu thành công! Mật khẩu mới đã có hiệu lực.')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setPasswordError('')
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại.'
+      setPasswordError(msg)
+      toast.error(msg)
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   if (loading || !settings) {
     return (
       <div className="flex-1 flex items-center justify-center p-12">
@@ -162,6 +334,7 @@ export default function SettingsPage() {
   const tabs = [
     { id: 'store', label: 'Thông tin in bill', icon: Store },
     { id: 'payment', label: 'Cổng thanh toán SePay', icon: CreditCard },
+    { id: 'account', label: 'Tài khoản & Mật khẩu', icon: Key },
   ]
 
   return (
@@ -178,24 +351,24 @@ export default function SettingsPage() {
                 Cài Đặt Hệ Thống Quán
               </h1>
               <p className="text-xs sm:text-sm text-stone-500">
-                Cấu hình thông tin in hóa đơn và kết nối cổng thanh toán SePay
+                Cấu hình thông tin in hóa đơn, kết nối SePay và bảo mật tài khoản
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              type="button"
-              variant="outline"
-              icon={RotateCcw}
-              onClick={() => setIsResetModalOpen(true)}
-              className="text-xs"
-            >
-              Khôi phục mặc định
-            </Button>
-
             {activeTab === 'store' && (
               <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  icon={RotateCcw}
+                  onClick={() => setIsResetModalOpen(true)}
+                  className="text-xs"
+                >
+                  Khôi phục mặc định
+                </Button>
+
                 <Button
                   type="button"
                   variant="primary"
@@ -372,7 +545,7 @@ export default function SettingsPage() {
                     {sepaySettings?.is_configured ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
                         <AlertCircle className="w-3.5 h-3.5" />
-                        Đã lưu khóa, chưa kết nối thanh toán: {sepaySettings.masked_key || `••••••••${sepaySettings.api_key_last4}`}
+                        Đã lưu API Key webhook: {sepaySettings.masked_key || `••••••••${sepaySettings.api_key_last4}`}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
@@ -383,7 +556,7 @@ export default function SettingsPage() {
                   </div>
 
                   <p className="text-xs text-stone-600 leading-relaxed">
-                    SePay chưa được tích hợp để nhận hoặc đối soát giao dịch. API Key hiện chỉ được băm và lưu; nhập khóa chưa bật thanh toán chuyển khoản. Giao diện chỉ hiện 4 số cuối dạng <code className="font-mono bg-white px-1.5 py-0.5 rounded border border-stone-200 text-stone-700">••••••••1234</code>.
+                    Khóa webhook đã lưu được giữ kín nên ô nhập sẽ để trống khi mở lại trang. Nút <strong>Kiểm tra kết nối</strong> kiểm tra máy chủ có cấu hình khóa đã lưu hay chưa; thao tác này không lưu payload, xử lý giao dịch hay cập nhật đơn. Để kiểm tra SePay gọi được URL công khai, dùng <strong>Gửi thử</strong> trên dashboard SePay.
                   </p>
 
                   {/* Form dán API Key */}
@@ -406,6 +579,17 @@ export default function SettingsPage() {
                     </div>
 
                     <Button
+                      type="button"
+                      variant="outline"
+                      icon={Wifi}
+                      loading={testingSepay}
+                      disabled={savingSepay || testingSepay || !sepaySettings?.is_configured}
+                      onClick={handleTestSepayConnection}
+                      className="shrink-0 text-xs font-bold"
+                    >
+                      Kiểm tra kết nối
+                    </Button>
+                    <Button
                       type="submit"
                       variant="primary"
                       icon={Key}
@@ -414,6 +598,313 @@ export default function SettingsPage() {
                     >
                       Lưu SePay Key
                     </Button>
+                  </form>
+
+                  {sepayTestResult && (
+                    <p role="status" className={`text-xs font-medium ${sepayTestResult.connected ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {sepayTestResult.message}
+                    </p>
+                  )}
+
+                  <div className="space-y-2 pt-3 border-t border-stone-200">
+                    <label htmlFor="sepay-webhook-url" className="text-xs font-bold text-stone-700">URL nhận webhook</label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        id="sepay-webhook-url"
+                        readOnly
+                        value={sepayWebhookUrl}
+                        className="flex-1 min-w-0 px-3 py-2.5 text-xs bg-white border border-stone-300 rounded-xl text-stone-700 font-mono"
+                      />
+                      <Button type="button" variant="outline" icon={Copy} onClick={handleCopySepayWebhookUrl} className="shrink-0 text-xs font-bold">
+                        Sao chép URL
+                      </Button>
+                    </div>
+                    <p className="text-xs text-stone-500">
+                      Dùng nút Gửi thử của SePay để xác nhận server nhận được request. Endpoint này chỉ phục vụ kiểm tra kết nối, không dùng để xác nhận thanh toán thật.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* TAB 3: TÀI KHOẢN & MẬT KHẨU */}
+            {/* ========================================================================= */}
+            {activeTab === 'account' && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                {/* 1. KHỐI TỔNG QUAN TÀI KHOẢN & LỊCH SỬ HOẠT ĐỘNG */}
+                <div className="p-6 rounded-3xl bg-gradient-to-br from-[#FAF7F2] to-[#F5EFE6] border border-[#E8DFD5] shadow-xs space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#C88A35] to-[#8C4A16] text-white flex items-center justify-center font-black text-xl shadow-md shrink-0">
+                        <User className="w-7 h-7" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2.5">
+                          <h2 className="font-black text-[#2D1B14] text-lg sm:text-xl">
+                            {currentUser?.fullName || currentUser?.name || 'Chủ quán'}
+                          </h2>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#2D1B14] text-[#E09F3E] uppercase tracking-wider">
+                            {currentUser?.role || 'OWNER'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-600 mt-1">
+                          <span className="flex items-center gap-1 font-semibold text-[#2D1B14]">
+                            <Phone className="w-3.5 h-3.5 text-[#C88A35]" />
+                            <span>{currentUser?.phone || currentUser?.username || 'Chưa cập nhật SĐT'}</span>
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded-md">Bắt buộc</span>
+                          </span>
+                          {currentUser?.email ? (
+                            <span className="flex items-center gap-1 text-stone-600">
+                              <Mail className="w-3.5 h-3.5 text-stone-400" />
+                              <span>{currentUser.email}</span>
+                            </span>
+                          ) : (
+                            <span className="text-stone-400 italic flex items-center gap-1">
+                              <Mail className="w-3.5 h-3.5 text-stone-300" />
+                              Chưa có email
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold self-start sm:self-center">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Toàn quyền quản trị quán</span>
+                    </div>
+                  </div>
+
+                  {/* Lịch sử tài khoản: Đăng nhập & Cập nhật */}
+                  <div className="pt-4 border-t border-[#E8DFD5] grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#E8DFD5]/80 shadow-2xs">
+                      <div className="flex items-center gap-2 text-stone-500 text-[11px] font-bold uppercase tracking-wider">
+                        <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Đăng nhập gần nhất</span>
+                      </div>
+                      <p className="mt-1.5 font-bold text-stone-800 text-xs sm:text-sm">
+                        {formatDateTime(currentUser?.lastLoginAt)}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#E8DFD5]/80 shadow-2xs">
+                      <div className="flex items-center gap-2 text-stone-500 text-[11px] font-bold uppercase tracking-wider">
+                        <History className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Cập nhật gần nhất</span>
+                      </div>
+                      <p className="mt-1.5 font-bold text-stone-800 text-xs sm:text-sm">
+                        {formatDateTime(currentUser?.updatedAt)}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#E8DFD5]/80 shadow-2xs">
+                      <div className="flex items-center gap-2 text-stone-500 text-[11px] font-bold uppercase tracking-wider">
+                        <Calendar className="w-3.5 h-3.5 text-[#C88A35]" />
+                        <span>Ngày tạo tài khoản</span>
+                      </div>
+                      <p className="mt-1.5 font-bold text-stone-800 text-xs sm:text-sm">
+                        {formatDateTime(currentUser?.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. FORM CẬP NHẬT THÔNG TIN: TÊN, PHONE (BẮT BUỘC), EMAIL (TÙY CHỌN) */}
+                <div className="p-6 sm:p-7 rounded-3xl bg-white border border-[#E8DFD5] shadow-xs space-y-5">
+                  <div className="border-b border-stone-100 pb-3">
+                    <h2 className="font-bold text-[#2D1B14] text-base flex items-center gap-2">
+                      <User className="w-4 h-4 text-[#C88A35]" />
+                      Thông tin cá nhân & Số điện thoại đăng nhập
+                    </h2>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      Chỉnh sửa họ tên, số điện thoại chính dùng để đăng nhập và email liên kết
+                    </p>
+                  </div>
+
+                  {profileError && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <span>{profileError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSaveProfile} className="space-y-4 max-w-xl">
+                    <Input
+                      label="Họ và tên chủ quán"
+                      icon={User}
+                      value={profileForm.fullName}
+                      onChange={(e) => {
+                        setProfileForm({ ...profileForm, fullName: e.target.value })
+                        if (profileError) setProfileError('')
+                      }}
+                      placeholder="Ví dụ: Huỳnh Tấn Phong"
+                      helperText="Tên hiển thị của chủ quán trên hệ thống"
+                      required
+                    />
+
+                    <Input
+                      label="Số điện thoại đăng nhập (Bắt buộc)"
+                      icon={Phone}
+                      value={profileForm.phone}
+                      onChange={(e) => {
+                        setProfileForm({ ...profileForm, phone: e.target.value })
+                        if (profileError) setProfileError('')
+                      }}
+                      placeholder="Ví dụ: 0901234567"
+                      helperText="Số điện thoại chính bắt buộc dùng để đăng nhập vào POS"
+                      required
+                    />
+
+                    <Input
+                      label="Email liên kết (Không bắt buộc)"
+                      icon={Mail}
+                      type="email"
+                      value={profileForm.email}
+                      onChange={(e) => {
+                        setProfileForm({ ...profileForm, email: e.target.value })
+                        if (profileError) setProfileError('')
+                      }}
+                      placeholder="chuan@quannho.vn (có thể để trống)"
+                      helperText="Không bắt buộc. Dùng để đăng nhập phụ hoặc nhận thông báo nếu cần"
+                    />
+
+                    <div className="pt-2">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        icon={Save}
+                        loading={savingProfile}
+                        disabled={!profileForm.fullName.trim() || !profileForm.phone.trim() || savingProfile}
+                        className="bg-[#2D1B14] hover:bg-[#3E2723] text-xs font-bold shadow-sm"
+                      >
+                        Lưu thông tin tài khoản
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* 3. FORM ĐỔI MẬT KHẨU ĐĂNG NHẬP */}
+                <div className="p-6 sm:p-7 rounded-3xl bg-white border border-[#E8DFD5] shadow-xs space-y-5">
+                  <div className="border-b border-stone-100 pb-3">
+                    <h2 className="font-bold text-[#2D1B14] text-base flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-[#C88A35]" />
+                      Đổi mật khẩu đăng nhập
+                    </h2>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      Vui lòng nhập mật khẩu hiện tại và tạo mật khẩu mới an toàn (tối thiểu 6 ký tự)
+                    </p>
+                  </div>
+
+                  {passwordError && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <span>{passwordError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleChangePassword} className="space-y-4 max-w-xl">
+                    {/* Mật khẩu hiện tại */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                        Mật khẩu hiện tại <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                          <Lock className="w-4 h-4" />
+                        </div>
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          value={currentPassword}
+                          onChange={(e) => {
+                            setCurrentPassword(e.target.value)
+                            if (passwordError) setPasswordError('')
+                          }}
+                          placeholder="Nhập mật khẩu đang dùng"
+                          className="w-full h-11 pl-10 pr-10 text-xs sm:text-sm font-semibold rounded-xl border border-[#D4C7B8] focus:border-[#C88A35] focus:ring-2 focus:ring-[#C88A35]/20 focus:outline-none bg-stone-50/40 focus:bg-white transition-all"
+                          autoComplete="current-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer"
+                        >
+                          {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Mật khẩu mới */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                        Mật khẩu mới <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                          <Key className="w-4 h-4" />
+                        </div>
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => {
+                            setNewPassword(e.target.value)
+                            if (passwordError) setPasswordError('')
+                          }}
+                          placeholder="Tối thiểu 6 ký tự"
+                          className="w-full h-11 pl-10 pr-10 text-xs sm:text-sm font-semibold rounded-xl border border-[#D4C7B8] focus:border-[#C88A35] focus:ring-2 focus:ring-[#C88A35]/20 focus:outline-none bg-stone-50/40 focus:bg-white transition-all"
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer"
+                        >
+                          {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Xác nhận mật khẩu mới */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                        Xác nhận mật khẩu mới <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
+                          <Key className="w-4 h-4" />
+                        </div>
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => {
+                            setConfirmPassword(e.target.value)
+                            if (passwordError) setPasswordError('')
+                          }}
+                          placeholder="Nhập lại mật khẩu mới"
+                          className="w-full h-11 pl-10 pr-10 text-xs sm:text-sm font-semibold rounded-xl border border-[#D4C7B8] focus:border-[#C88A35] focus:ring-2 focus:ring-[#C88A35]/20 focus:outline-none bg-stone-50/40 focus:bg-white transition-all"
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer"
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        icon={Save}
+                        loading={changingPassword}
+                        disabled={!currentPassword || !newPassword || !confirmPassword || changingPassword}
+                        className="bg-[#2D1B14] hover:bg-[#3E2723] text-xs font-bold shadow-sm"
+                      >
+                        Cập nhật mật khẩu
+                      </Button>
+                    </div>
                   </form>
                 </div>
               </div>

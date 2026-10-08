@@ -44,4 +44,14 @@ class SepaySettingsApiTest {
         assertEquals(400, error.getStatusCode().value());
         verifyNoInteractions(encoder);
     }
+
+    @Test void connectionCheckUsesSavedKeyConfigurationWithoutReturningTheSecret() {
+        when(jdbc.queryForList(contains("SELECT is_configured"), Boolean.class)).thenReturn(java.util.List.of(true));
+
+        Map<String, Object> response = controller.testSepayConnection();
+
+        assertEquals(true, response.get("success"));
+        assertFalse(response.containsKey("api_key"));
+        verifyNoInteractions(encoder);
+    }
 }

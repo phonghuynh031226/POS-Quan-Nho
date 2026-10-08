@@ -11,7 +11,7 @@ import {
   CreditCard,
   BarChart3,
   ShieldCheck,
-  Users,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import Button from '../../components/common/Button'
@@ -153,9 +153,9 @@ export default function LoginPage() {
 
                 <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-[#341B10]/60 border border-[#4D2919]/70 backdrop-blur-sm transition-all hover:bg-[#341B10]">
                   <div className="p-2 rounded-xl bg-[#C88A35]/15 text-[#E5A952] shrink-0">
-                    <Users className="w-5 h-5" />
+                    <SlidersHorizontal className="w-5 h-5" />
                   </div>
-                  <h3 className="text-sm font-bold text-stone-100">Quản lý ca & Phân quyền nhân sự</h3>
+                  <h3 className="text-sm font-bold text-stone-100">Quản lý Thực đơn & Topping linh hoạt</h3>
                 </div>
               </div>
             </div>
@@ -164,9 +164,9 @@ export default function LoginPage() {
             <div className="hidden lg:flex mt-5 pt-3.5 border-t border-[#3F2113] items-center justify-between text-xs text-stone-400">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                Hạ tầng bảo mật & phân quyền
+                Hệ thống dữ liệu bảo mật
               </span>
-              <span>Dành cho Quản lý & Nhân viên</span>
+              <span>Dành cho Quản lý quán</span>
             </div>
           </div>
 

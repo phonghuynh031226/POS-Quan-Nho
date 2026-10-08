@@ -18,4 +18,15 @@ export const authApi = {
       throw error
     }
   },
+  async updateProfile(profileData) {
+    const { data } = await apiClient.put('/auth/profile', profileData)
+    return data
+  },
+  async changePassword(currentPassword, newPassword) {
+    const { data } = await apiClient.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    })
+    return data
+  },
 }

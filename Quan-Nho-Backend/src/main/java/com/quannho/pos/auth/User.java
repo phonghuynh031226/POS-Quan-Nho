@@ -19,4 +19,6 @@ public class User {
     @Column(name = "updated_at", nullable = false) private OffsetDateTime updatedAt;
     @PrePersist void onCreate() { createdAt = updatedAt = OffsetDateTime.now(); }
     @PreUpdate void onUpdate() { updatedAt = OffsetDateTime.now(); }
+    public String getPhone() { return username; }
+    public void setPhone(String phone) { this.username = phone; }
 }

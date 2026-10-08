@@ -44,10 +44,13 @@ public class SecurityConfig {
 
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository repository) throws Exception {
         http.securityContext(context -> context.securityContextRepository(repository));
-        http.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
+        http.csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .ignoringRequestMatchers("/api/webhooks/sepay"));
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/api/auth/login", "/api/auth/csrf", "/api/auth/me", "/api/settings/shop/public").permitAll()
+                .requestMatchers("/api/webhooks/sepay").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll());
         http.exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, error) ->

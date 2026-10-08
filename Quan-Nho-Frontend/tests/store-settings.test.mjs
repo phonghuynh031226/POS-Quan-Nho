@@ -51,6 +51,13 @@ test('only public shop identity is unauthenticated; full settings stay private',
   assert.doesNotMatch(code, /requestMatchers\(org\.springframework\.http\.HttpMethod\.GET,\s*"\/api\/settings\/shop"\)\.permitAll\(\)/)
 })
 
+test('SePay webhook callback is public for provider delivery and protected by its API Key', async () => {
+  const code = await readFile(backendSecurityPath, 'utf8')
+
+  assert.match(code, /ignoringRequestMatchers\("\/api\/webhooks\/sepay"\)/)
+  assert.match(code, /requestMatchers\("\/api\/webhooks\/sepay"\)\.permitAll\(\)/)
+})
+
 test('settingsApi provides full get, update, and reset operations', async () => {
   const code = await readFile(settingsApiPath, 'utf8')
   assert.match(code, /apiClient\.get\('\/settings\/shop'\)/)
@@ -65,6 +72,24 @@ test('settingsApi returns the saved SePay configuration instead of throwing a pl
   assert.match(code, /const \{ data \} = await apiClient\.post\('\/settings\/sepay\/key', \{ apiKey \}\)/)
   assert.match(code, /return data/)
   assert.doesNotMatch(code, /SePay chưa được kết nối/)
+})
+
+test('SePay settings check webhook connectivity with a POST button and show the provider callback URL', async () => {
+  const [apiCode, pageCode] = await Promise.all([
+    readFile(settingsApiPath, 'utf8'),
+    readFile(settingsPagePath, 'utf8'),
+  ])
+
+  assert.match(apiCode, /async testSepayConnection\(\)/)
+  assert.match(apiCode, /apiClient\.post\('\/settings\/sepay\/test'\)/)
+  assert.match(pageCode, /webhooks\/sepay/)
+  assert.match(pageCode, /handleTestSepayConnection/)
+  assert.match(pageCode, /Kiểm tra kết nối/)
+  assert.match(pageCode, /Gửi thử/)
+  assert.match(pageCode, /máy chủ đã nhận cấu hình API Key webhook/i)
+  assert.doesNotMatch(pageCode, /Authorization: Apikey/)
+  assert.match(pageCode, /URL công khai.*dashboard SePay/i)
+  assert.match(pageCode, /sepaySettings\?\.is_configured/)
 })
 
 test('Admin navigation and routing includes /settings page', async () => {
@@ -99,7 +124,7 @@ test('SettingsPage renders both configuration areas', async () => {
   assert.match(code, /sepayApiKeyInput/)
   assert.match(code, /handleSaveSepayKey/)
   assert.match(code, /sepay_settings/)
-  assert.match(code, /chưa được tích hợp để nhận hoặc đối soát giao dịch/i)
+  assert.match(code, /không lưu payload, xử lý giao dịch hay cập nhật đơn/i)
   assert.doesNotMatch(code, /kích hoạt tính năng tự động nhận diện thanh toán/)
   assert.doesNotMatch(code, /Đã kết nối:/)
 })

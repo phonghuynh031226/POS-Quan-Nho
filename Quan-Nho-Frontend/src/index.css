@@ -22,6 +22,22 @@
   background: #b59f88;
 }
 
+/* Dedicated visible scrollbar for Reports Content Area */
+#reports-content-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+#reports-content-scroll::-webkit-scrollbar-track {
+  background: #EFE9E0;
+  border-radius: 9999px;
+}
+#reports-content-scroll::-webkit-scrollbar-thumb {
+  background: #C88A35;
+  border-radius: 9999px;
+}
+#reports-content-scroll::-webkit-scrollbar-thumb:hover {
+  background: #A86920;
+}
+
 /* Print CSS for K80 / K58 thermal receipt printers & standard printing */
 @media screen {
   #pos-print-area {

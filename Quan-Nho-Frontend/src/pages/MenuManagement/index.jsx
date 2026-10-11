@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -30,7 +29,6 @@ import ToppingManagementModal from '../../components/menu/ToppingManagementModal
 import { useToast } from '../../context/ToastContext'
 
 export default function MenuManagementPage() {
-  const navigate = useNavigate()
   const [menu, setMenu] = useState([])
   const [categories, setCategories] = useState([])
   const [toppings, setToppings] = useState([])
@@ -164,9 +162,9 @@ export default function MenuManagementPage() {
   ]
 
   return (
-    <div className="flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
       {/* Page Title & Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-[#2D1B14] tracking-tight">
             Quản Lý Thực Đơn Quán
@@ -207,7 +205,7 @@ export default function MenuManagementPage() {
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between p-4 bg-white rounded-2xl border border-[#E8DFD5] shadow-xs">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between p-4 bg-white rounded-2xl border border-[#E8DFD5] shadow-xs shrink-0">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -239,6 +237,7 @@ export default function MenuManagementPage() {
       </div>
 
       {/* Menu Table / Cards */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
       {loading ? (
         <LoadingSpinner text="Đang tải danh sách món..." />
       ) : filteredItems.length === 0 ? (
@@ -389,6 +388,7 @@ export default function MenuManagementPage() {
           })}
         </div>
       )}
+      </div>
 
       {/* Edit / Add Modal */}
       <MenuItemModal

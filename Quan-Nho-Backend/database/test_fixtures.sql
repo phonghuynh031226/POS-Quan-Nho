@@ -3,7 +3,7 @@ BEGIN;
 -- 1. Test Owner User (admin / 123456)
 INSERT INTO users(id, username, email, password_hash, full_name, role, is_active)
 VALUES (1, 'admin', 'admin@quannho.vn', crypt('123456', gen_salt('bf', 10)), 'Chủ quán', 'OWNER', true)
-ON CONFLICT (username) DO UPDATE SET password_hash = crypt('123456', gen_salt('bf', 10)), is_active = true;
+ON CONFLICT (id) DO UPDATE SET username = 'admin', password_hash = crypt('123456', gen_salt('bf', 10)), is_active = true;
 
 -- 2. Test Category
 INSERT INTO categories(id, code, name, display_order, is_active)

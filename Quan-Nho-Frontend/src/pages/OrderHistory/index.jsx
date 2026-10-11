@@ -6,10 +6,7 @@ import {
   Printer,
   XCircle,
   AlertTriangle,
-  ExternalLink,
   ShoppingBag,
-  TrendingUp,
-  CheckCircle2,
   Calendar,
   Clock,
   LayoutGrid,
@@ -17,7 +14,6 @@ import {
   X,
   CreditCard,
   User,
-  Coffee,
 } from 'lucide-react'
 import { orderApi } from '../../api/orderApi'
 import { formatCurrency, formatDateTime, formatTime } from '../../utils/formatters'
@@ -30,7 +26,6 @@ import Modal from '../../components/common/Modal'
 import ReceiptModal from '../../components/print/ReceiptModal'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import EmptyState from '../../components/common/EmptyState'
-import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 
 const STATUS_TABS = [
@@ -223,9 +218,9 @@ export default function OrderHistoryPage() {
     : null
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
       {/* 1. Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-black text-[#2D1B14] tracking-tight">
@@ -274,7 +269,7 @@ export default function OrderHistoryPage() {
       </div>
 
       {/* 2. Top Summary Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
         {/* Card 1: Tổng đơn */}
         <div className="bg-white p-4 rounded-2xl border border-[#E8DFD5] shadow-2xs flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200 text-[#C88A35] flex items-center justify-center shrink-0">
@@ -350,7 +345,7 @@ export default function OrderHistoryPage() {
       </div>
 
       {/* 3. Status Tabs Pills & Filter Controls */}
-      <div className="bg-white p-4 rounded-2xl border border-[#E8DFD5] shadow-2xs space-y-3.5">
+      <div className="bg-white p-4 rounded-2xl border border-[#E8DFD5] shadow-2xs space-y-3.5 shrink-0">
         {/* Status Filter Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           {STATUS_TABS.map((tab) => {
@@ -442,6 +437,7 @@ export default function OrderHistoryPage() {
       </div>
 
       {/* 4. Orders List Display */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
       {loading ? (
         <LoadingSpinner text="Đang tải danh sách lịch sử đơn..." />
       ) : orders.length === 0 ? (
@@ -775,6 +771,7 @@ export default function OrderHistoryPage() {
           </div>
         </div>
       )}
+      </div>
 
       {/* --- MODAL: CHI TIẾT ĐƠN HÀNG --- */}
       <Modal

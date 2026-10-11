@@ -46,7 +46,7 @@ class SepaySettingsApiTest {
     }
 
     @Test void connectionCheckUsesSavedKeyConfigurationWithoutReturningTheSecret() {
-        when(jdbc.queryForList(contains("SELECT is_configured"), Boolean.class)).thenReturn(java.util.List.of(true));
+        when(jdbc.queryForList(contains("SELECT is_configured"), eq(Boolean.class))).thenReturn(java.util.List.of(true));
 
         Map<String, Object> response = controller.testSepayConnection();
 

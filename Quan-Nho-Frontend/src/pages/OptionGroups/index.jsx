@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import {
-  SlidersHorizontal,
   Plus,
   Search,
   Edit2,
@@ -8,10 +7,6 @@ import {
   Check,
   Ban,
   AlertTriangle,
-  Layers,
-  Sparkles,
-  CheckCircle2,
-  Circle,
 } from 'lucide-react'
 import { optionGroupApi } from '../../api/optionGroupApi'
 import { formatCurrency } from '../../utils/formatters'
@@ -139,9 +134,9 @@ export default function OptionGroupsPage() {
   })
 
   return (
-    <div className="flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-[#2D1B14] tracking-tight flex items-center gap-2.5">
             <SlidersHorizontal className="w-6 h-6 text-[#C88A35]" />
@@ -163,7 +158,7 @@ export default function OptionGroupsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between p-4 bg-white rounded-2xl border border-[#E8DFD5] shadow-xs">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between p-4 bg-white rounded-2xl border border-[#E8DFD5] shadow-xs shrink-0">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -216,15 +211,16 @@ export default function OptionGroupsPage() {
       </div>
 
       {/* Content list */}
-      {loading ? (
-        <LoadingSpinner text="Đang tải danh sách nhóm tùy chọn..." />
-      ) : filteredGroups.length === 0 ? (
-        <EmptyState
-          title="Không tìm thấy nhóm tùy chọn nào"
-          description="Hãy tạo nhóm tùy chọn mới hoặc thay đổi bộ lọc tìm kiếm"
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
+        {loading ? (
+          <LoadingSpinner text="Đang tải danh sách nhóm tùy chọn..." />
+        ) : filteredGroups.length === 0 ? (
+          <EmptyState
+            title="Không tìm thấy nhóm tùy chọn nào"
+            description="Hãy tạo nhóm tùy chọn mới hoặc thay đổi bộ lọc tìm kiếm"
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredGroups.map((group) => {
             const isSingle = group.selectionType === 'SINGLE'
             const isGroupActive = group.isActive !== false && group.is_active !== false
@@ -372,8 +368,9 @@ export default function OptionGroupsPage() {
               </div>
             )
           })}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* Modal Add / Edit Option Group */}
       <OptionGroupModal

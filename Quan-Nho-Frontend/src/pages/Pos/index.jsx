@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Plus, Ban, Utensils, Coffee, Menu, Flame } from 'lucide-react'
+import { Search, Menu, Flame } from 'lucide-react'
 import { menuApi } from '../../api/menuApi'
 import { orderApi } from '../../api/orderApi'
 import { formatCurrency } from '../../utils/formatters'
